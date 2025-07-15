@@ -2,6 +2,8 @@
 import { useUser } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import ProjectForm from '@/components/ProjectForm';
+import ProjectList from '@/components/ProjectList';
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -67,7 +69,10 @@ export default function Dashboard() {
         </div>
       )}
       </motion.div>
-
+      <div className="mt-10">
+      <ProjectForm />
+      <ProjectList />
+    </div>
     </main>
   );
 }

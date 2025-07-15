@@ -255,14 +255,14 @@ export default function Home() {
             type="submit"
             className="px-4 py-2 rounded-r-lg bg-primary text-black font-semibold"
           >
-            S'abonner
+            S&apos;abonner
           </motion.button>
         </form>
         <div className="flex gap-4 text-xl">
-          <a href="#" aria-label="LinkedIn" className="hover:text-primary">
+          <a href="https://www.linkedin.com/company/kenomi-eu" aria-label="LinkedIn" className="hover:text-primary">
             <Image src="/linkedin.png" alt="insta" width={40} height={40} />
           </a>
-          <a href="https://www.instagram.com/kenomi_org"
+          <a href="https://www.instagram.com/kenomi_eu/"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Instagram"
@@ -272,7 +272,7 @@ export default function Home() {
           <a href="https://x.com/kenomi_eu" aria-label="Twitter" className="hover:text-primary">
             <Image src="/twitter.png" alt="twitter" width={40} height={40} />
           </a>
-          <a href="https://www.facebook.com/kenomi" aria-label="Facebook" className="hover:text-primary">
+          <a href="https://www.facebook.com/people/Kenomi/61578022332134/?sk=about" aria-label="Facebook" className="hover:text-primary">
             <Image src="/facebook.png" alt="facebook" width={40} height={40} />
           </a>
           <a href="#" aria-label="TikTok" className="hover:text-primary">
@@ -303,7 +303,14 @@ export default function Home() {
 }
 
 // Chiffres animés
-function AnimatedStat({ value, label, display, delay = 0 }) {
+type AnimatedStatProps = {
+  value: number | string;
+  label: string;
+  display?: string;
+  delay?: number;
+};
+
+function AnimatedStat({ value, label, display, delay = 0 }: AnimatedStatProps) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     let start = 0;
@@ -348,7 +355,7 @@ function Testimonial({ name, text }: { name: string; text: string }) {
       transition={{ duration: 0.5 }}
       className="bg-gradient-to-br from-green-50 to-blue-50 rounded-lg p-6 shadow flex-1"
     >
-      <p className="text-gray-700 italic mb-3">"{text}"</p>
+      <p className="text-gray-700 italic mb-3">&quot;{text}&quot;</p>
       <div className="text-right text-sm text-gray-600 font-semibold">{name}</div>
     </motion.div>
   );
