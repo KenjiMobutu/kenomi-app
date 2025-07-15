@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { useParams } from 'next/navigation';
 import { checkRole } from '@/utils/roles';
@@ -10,6 +11,7 @@ export default function EditProjectPage() {
   const { id } = useParams();
   const { getToken } = useAuth();
   const { user } = useUser();
+  const router = useRouter();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [message, setMessage] = useState('');
@@ -54,6 +56,9 @@ export default function EditProjectPage() {
 
       if (res.ok) {
         setMessage('✅ Projet mis à jour avec succès.');
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1500);
       } else {
         const err = await res.json();
         setMessage('❌ ' + err.error);

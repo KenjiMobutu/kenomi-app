@@ -57,7 +57,7 @@ export default function Dashboard() {
           <h2 className="text-xl font-bold text-white mb-4">🎯 Espace administrateur</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-              <a href="/admin/dons" className="block p-6 bg-white/80 rounded-lg shadow border text-left backdrop-blur-sm hover:shadow-lg transition cursor-pointer">
+              <a href="/admin/donations" className="block p-6 bg-white/80 rounded-lg shadow border text-left backdrop-blur-sm hover:shadow-lg transition cursor-pointer">
                 <h3 className="text-lg text-black font-semibold mb-2">🧮 Gestion des dons</h3>
                 <p className="text-gray-700">Voir et administrer tous les dons reçus.</p>
               </a>

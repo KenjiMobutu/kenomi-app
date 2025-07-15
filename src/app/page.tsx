@@ -1,7 +1,7 @@
 'use client';
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
 
 // Données statiques
@@ -57,13 +57,13 @@ export default function Home() {
         </div>
         <nav className={`flex-col md:flex md:flex-row md:items-center gap-4 md:gap-8 text-gray-800 font-medium text-sm absolute md:static top-full left-0 w-full md:w-auto bg-white md:bg-transparent p-4 md:p-0 shadow md:shadow-none z-40 ${isMenuOpen ? "flex" : "hidden md:flex"}`}>
           <button onClick={() => setIsMenuOpen(false)}>
-            <a href="#solutions" className="hover:text-primary">Nos Solutions</a>
+            <a href="#solutions" className="hover:text-primary">Our Solutions</a>
           </button>
           <button onClick={() => setIsMenuOpen(false)}>
-            <a href="#impact" className="hover:text-primary">Notre Impact</a>
+            <a href="#impact" className="hover:text-primary">Our Impact</a>
           </button>
           <button onClick={() => setIsMenuOpen(false)}>
-            <a href="#mission" className="hover:text-primary">Rejoindre la mission</a>
+            <a href="#mission" className="hover:text-primary">Join the mission</a>
           </button>
           <button onClick={() => setIsMenuOpen(false)}>
             <a href="#contact" className="hover:text-primary">Contact</a>
