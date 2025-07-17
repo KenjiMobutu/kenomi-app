@@ -1,22 +1,37 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
+import { Bar, Line } from 'react-chartjs-2';
+import { useUser } from '@clerk/nextjs';
+import { FaChartBar, FaCalendarAlt, FaTrophy, FaTable, FaDownload, FaSearch, FaEuroSign, FaHashtag, FaChartPie } from 'react-icons/fa';
+import Image from 'next/image';
+import Link from 'next/link';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
+  PointElement,
+  LineElement,
   BarElement,
   Title,
   Tooltip,
   Legend
 } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-import { useUser } from '@clerk/nextjs';
-import { FaChartBar, FaCalendarAlt, FaTrophy, FaTable, FaDownload, FaSearch } from 'react-icons/fa';
-import Image from 'next/image';
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -49,6 +64,8 @@ export default function AdminDonationsPage() {
   const [search, setSearch] = useState('');
   // Debounced search state
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  // Chargement asynchrone pour stats/cartes/graphes
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [darkMode, setDarkMode] = useState(true);
   // Ajout tri interactif
@@ -60,6 +77,30 @@ export default function AdminDonationsPage() {
   const [filterCurrency, setFilterCurrency] = useState('all');
   const [minAmount, setMinAmount] = useState('');
   const { user } = useUser();
+  // Pagination dynamique (infinite scroll)
+  const [visibleCount, setVisibleCount] = useState(20);
+  const loaderRef = useRef<HTMLDivElement | null>(null);
+  // Infinite scroll observer
+  useEffect(() => {
+    const observer = new window.IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 20);
+        }
+      },
+      { threshold: 1 }
+    );
+
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current);
+    }
+
+    return () => {
+      if (loaderRef.current) {
+        observer.unobserve(loaderRef.current);
+      }
+    };
+  }, []);
   useEffect(() => {
     console.log('User:', user);
     async function fetchDonations() {
@@ -86,6 +127,10 @@ export default function AdminDonationsPage() {
 
     fetchDonations();
     fetchUserProfile();
+    // Ajout simulation latence (pour stats/cartes/graphes)
+    setTimeout(() => {
+      setIsLoadingStats(false);
+    }, 1000);
   }, []);
 
   const filteredDonations = useMemo(() => {
@@ -220,22 +265,46 @@ export default function AdminDonationsPage() {
     alert('✅ Export CSV terminé avec succès');
   }
 
+  function exportPDF() {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('Liste des dons', 14, 22);
+    autoTable(doc, {
+      head: [['Nom', 'Email', 'Montant', 'Devise', 'Statut', 'Date']],
+      body: donations.map(d => [
+        d.name,
+        d.email,
+        `€ ${d.amount.toFixed(2)}`,
+        d.currency.toUpperCase(),
+        d.status,
+        new Date(d.created_at).toLocaleString('fr-FR')
+      ]),
+      startY: 30,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [236, 72, 153] }
+    });
+    doc.save('donations.pdf');
+  }
+
   return (
     <div className={`flex min-h-screen flex-col ${darkMode ? 'bg-gray-950 text-white' : 'bg-[#f4f6fa] text-gray-900'}`}>
       <header className="w-full px-8 py-4 flex justify-between items-center bg-gray-950 border-b border-gray-800">
         <h1 className="text-xl font-bold text-white">
-          <a href='/' title="Retour à l’accueil">
+          <Link href='/' title="Retour à l’accueil">
             <Image src="/noBgWhite.png" alt="logo Kenomi" height={80} width={150} className="hover:opacity-90 transition-opacity duration-200" />
-          </a>
+          </Link>
         </h1>
 
         <div className="flex items-center gap-4">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 300 }}
             onClick={() => setDarkMode(!darkMode)}
             className="text-sm px-4 py-2 rounded-full bg-gradient-to-tr from-fuchsia-500 to-orange-400 text-white hover:opacity-90"
           >
             {darkMode ? '🌞 Light' : '🌙 Dark'}
-          </button>
+          </motion.button>
           {/* Notifications placeholder */}
           <button
             className="text-white text-lg"
@@ -328,70 +397,183 @@ export default function AdminDonationsPage() {
               onChange={(e) => setMinAmount(e.target.value)}
               className={`border rounded-xl shadow-sm px-4 py-2 transition-all duration-300 ease-in-out ${darkMode ? 'bg-gray-900 text-white border-gray-700' : 'bg-white text-black border-gray-200'}`}
             />
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300 }}
               onClick={exportCSV}
               className="px-4 py-2 bg-gradient-to-tr from-fuchsia-500 to-orange-400 hover:opacity-90 text-white font-semibold rounded flex items-center justify-center"
             >
               <FaDownload className="inline mr-2" /> Exporter CSV
-            </button>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+              onClick={exportPDF}
+              className="px-4 py-2 bg-gradient-to-tr from-blue-500 to-purple-500 hover:opacity-90 text-white font-semibold rounded flex items-center justify-center"
+            >
+              <FaDownload className="inline mr-2" /> Exporter PDF
+            </motion.button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 animate-fade-in">
-            <div className={`rounded-2xl p-6 shadow-inner border transition-all duration-300 ease-in-out animate-fade-in ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'}`}>
-              <p className="text-sm text-gray-400 mb-1">Dons total</p>
-              <p className="text-2xl font-bold text-lime-400">€ {totalAmount.toFixed(2)}</p>
+          {isLoadingStats ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 animate-pulse">
+              <div className="h-32 rounded-2xl bg-gray-800/50"></div>
+              <div className="h-32 rounded-2xl bg-gray-800/50"></div>
+              <div className="h-32 rounded-2xl bg-gray-800/50"></div>
             </div>
-            <div className={`rounded-2xl p-6 shadow-inner border transition-all duration-300 ease-in-out animate-fade-in ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'}`}>
-              <p className="text-sm text-gray-400 mb-1">Nombre de dons</p>
-              <p className="text-2xl font-bold text-blue-400">{donations.length}</p>
-            </div>
-            <div className={`rounded-2xl p-6 shadow-inner border transition-all duration-300 ease-in-out animate-fade-in ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'}`}>
-              <p className="text-sm text-gray-400 mb-1">Moyenne</p>
-              <p className="text-2xl font-bold text-fuchsia-400">€ {avgAmount}</p>
-            </div>
-          </div>
+          ) : (
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+            >
+              {/* Carte Total */}
+              <div className={`rounded-2xl p-6 shadow-inner border text-center items-center justify-center flex flex-col bg-cover bg-center bg-no-repeat transition-all duration-300 ease-in-out animate-fade-in animate-[bgPulse_8s_ease-in-out_infinite]
+    ${darkMode
+      ? 'bg-[url("/cardbg.jpg")] bg-gray-900/80 border-gray-800'
+      : 'bg-[url("/cardbg.jpg")] bg-white/90 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'
+    }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-lime-500/20 text-lime-500 p-2 rounded-full">
+                    <FaEuroSign />
+                  </div>
+                  <p className="text-sm text-gray-400">Dons total</p>
+                </div>
+                <p className="text-2xl font-bold text-lime-400">€ {totalAmount.toFixed(2)}</p>
+              </div>
+              {/* Carte Nombre */}
+              <div className={`rounded-2xl p-6 shadow-inner border text-center items-center justify-center flex flex-col bg-cover bg-center bg-no-repeat transition-all duration-300 ease-in-out animate-fade-in animate-[bgPulse_8s_ease-in-out_infinite]
+    ${darkMode
+      ? 'bg-[url("/cardbg.jpg")] bg-gray-900/80 border-gray-800'
+      : 'bg-[url("/cardbg.jpg")] bg-white/90 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'
+    }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-blue-500/20 text-blue-500 p-2 rounded-full">
+                    <FaHashtag />
+                  </div>
+                  <p className="text-sm text-gray-400">Nombre de dons</p>
+                </div>
+                <p className="text-3xl font-bold text-blue-400">{donations.length}</p>
+              </div>
+              {/* Carte Moyenne */}
+              <div className={`rounded-2xl p-6 shadow-inner border text-center items-center justify-center flex flex-col bg-cover bg-center bg-no-repeat transition-all duration-300 ease-in-out animate-fade-in animate-[bgPulse_8s_ease-in-out_infinite]
+    ${darkMode
+      ? 'bg-[url("/cardbg.jpg")] bg-gray-900/80 border-gray-800'
+      : 'bg-[url("/cardbg.jpg")] bg-white/90 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'
+    }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-fuchsia-500/20 text-fuchsia-500 p-2 rounded-full">
+                    <FaChartPie />
+                  </div>
+                  <p className="text-sm text-gray-400">Moyenne</p>
+                </div>
+                <p className="text-2xl font-bold text-fuchsia-400">{avgAmount} €</p>
+              </div>
+            </motion.div>
+          )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10 animate-fade-in">
-            <div id="stats" className={`${darkMode
-              ? 'bg-gray-900 text-white border border-gray-800'
-              : 'bg-white text-gray-900 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 text-sm transition-all duration-300 ease-in-out animate-fade-in`}>
-              Nombre de dons : <strong>{donations.length}</strong> | Montant total : <strong>{totalAmount.toFixed(2)}€</strong> | Don moyen : <strong>{avgAmount}€</strong>
+          {isLoadingStats ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10 animate-pulse">
+              <div className="h-64 rounded-2xl bg-gray-800/50"></div>
+              <div className="h-64 rounded-2xl bg-gray-800/50"></div>
+              <div className="h-64 rounded-2xl bg-gray-800/50"></div>
+              <div className="h-64 rounded-2xl bg-gray-800/50"></div>
             </div>
+          ) : (
+            <motion.div
+              className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10"
+              initial={{ opacity: 0, y: 80 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+            >
+              <motion.div
+                id="stats"
+                className={`${darkMode
+                  ? 'bg-[url("/cardbg2.jpg")] bg-gray-900/90 bg-blend-overlay backdrop-blur-sm text-white border border-gray-800'
+                  : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm text-gray-900 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 text-sm transition-all duration-300 ease-in-out`}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                Nombre de dons : <strong>{donations.length}</strong> | Montant total : <strong>{totalAmount.toFixed(2)}€</strong> | Don moyen : <strong>{avgAmount}€</strong>
+              </motion.div>
 
-            <div id="monthly" className={`${darkMode
-              ? 'bg-gray-900 border border-gray-800'
-              : 'bg-white border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out animate-fade-in`}>
-              <h2 className={`${darkMode ? 'text-gray-300' : 'text-gray-800'} text-md font-semibold tracking-tight mb-2`}><FaChartBar className="inline mr-2" /> Don par mois</h2>
-              <hr className={`${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-4`} />
-              <Bar data={monthlyData} />
-            </div>
+              <motion.div
+                id="monthly"
+                className={`${darkMode
+                  ? 'bg-[url("/cardbg2.jpg")] bg-black/85 bg-blend-overlay backdrop-blur-sm border border-gray-800'
+                  : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out`}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                <h2 className={`${darkMode ? 'text-white' : 'text-gray-800'} text-md font-semibold tracking-tight mb-2`}>
+                  <FaChartBar className="inline mr-2" /> Don par mois</h2>
+                <hr className={`${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-4`} />
+                <Bar
+                  data={monthlyData}
+                  options={{
+                    responsive: true,
+                    plugins: { legend: { position: 'top' } },
+                    scales: { x: { stacked: true }, y: { stacked: true } },
+                    elements: {
+                      bar: {
+                        borderRadius: 10,
+                        borderSkipped: false
+                      }
+                    }
+                  }}
+                />
+              </motion.div>
 
-            <div id="count" className={`${darkMode
-              ? 'bg-gray-900 border border-gray-800'
-              : 'bg-white border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out animate-fade-in`}>
-              <h2 className={`${darkMode ? 'text-gray-300' : 'text-gray-800'} text-md font-semibold tracking-tight mb-2`}><FaTable className="inline mr-2" /> Nombre de dons par mois</h2>
-              <hr className={`${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-4`} />
-              <Bar data={monthlyCountData} />
-            </div>
+              <motion.div
+                id="count"
+                className={`${darkMode
+                  ? 'bg-[url("/cardbg2.jpg")]  bg-black/85  bg-blend-overlay backdrop-blur-sm border border-gray-800'
+                  : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out`}
+                initial={{ opacity: 0, y: 80 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                <h2 className={`${darkMode ? 'text-gray-300' : 'text-gray-800'} text-md font-semibold tracking-tight mb-2`}><FaTable className="inline mr-2" /> Nombre de dons par mois</h2>
+                <hr className={`${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-4`} />
+                <Line data={monthlyCountData} />
+              </motion.div>
 
-            <div id="top" className={`${darkMode
-              ? 'bg-gray-900 border border-gray-800'
-              : 'bg-white border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out animate-fade-in`}>
-              <h2 className={`${darkMode ? 'text-gray-300' : 'text-gray-800'} text-md font-semibold tracking-tight mb-2`}><FaTrophy className="inline mr-2" /> Top donateurs</h2>
-              <hr className={`${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-4`} />
-              <ul className="space-y-2">
-                {topDonors.map((donor, index) => (
-                  <li key={index} className={`flex justify-between border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'} pb-1`}>
-                    <div className="flex items-center gap-2">
-                      <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${donor.name}`} className="w-6 h-6 rounded-full transition-all duration-300 ease-in-out" alt={donor.name} />
-                      <span>{donor.name}</span>
-                    </div>
-                    <span className="font-semibold text-lime-400">€ {donor.total.toFixed(2)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+              <motion.div
+                id="top"
+                className={`${darkMode
+                  ? 'bg-[url("/cardbg2.jpg")]  bg-black/85  bg-blend-overlay backdrop-blur-sm border border-gray-800'
+                  : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out`}
+                initial={{ opacity: 2, y: 60 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                <h2 className={`${darkMode ? 'text-gray-300' : 'text-gray-800'} text-md font-semibold tracking-tight mb-2`}><FaTrophy className="inline mr-2" /> Top donateurs</h2>
+                <hr className={`${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-4`} />
+                <ul className="space-y-2">
+                  {topDonors.map((donor, index) => (
+                    <li key={index} className={`flex justify-between border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'} pb-1`}>
+                      <div className="flex items-center gap-2">
+                        <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${donor.name}`} className="w-6 h-6 rounded-full transition-all duration-300 ease-in-out" alt={donor.name} />
+                        <span>{donor.name}</span>
+                      </div>
+                      <span className="font-semibold text-lime-400">€ {donor.total.toFixed(2)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            </motion.div>
+          )}
 
           {loading ? (
             <div className="space-y-4 animate-pulse">
@@ -456,7 +638,7 @@ export default function AdminDonationsPage() {
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${darkMode ? 'divide-gray-800 bg-gray-900 text-white' : 'divide-gray-200 bg-white text-gray-900'}`}>
-                  {filteredDonations.map((don) => (
+                  {filteredDonations.slice(0, visibleCount).map((don) => (
                     <tr
                       key={don.id}
                       onClick={() => setSelectedDonation(don)}
@@ -484,6 +666,13 @@ export default function AdminDonationsPage() {
                   ))}
                 </tbody>
               </table>
+              {visibleCount < filteredDonations.length && (
+                <tr>
+                  <td colSpan={6} className="text-center py-4">
+                    <div ref={loaderRef} className="text-sm text-gray-500">Chargement en cours...</div>
+                  </td>
+                </tr>
+              )}
               {selectedDonation && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
                   <div className="bg-white rounded-xl p-6 w-[90%] max-w-lg shadow-xl">

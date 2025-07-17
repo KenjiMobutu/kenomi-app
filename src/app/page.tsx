@@ -35,9 +35,28 @@ export default function Home() {
   const [current, setCurrent] = useState(0);
   const { isSignedIn } = useUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // Scrollspy state
+  const [activeSection, setActiveSection] = useState("");
+  // Carousel témoignages
   useEffect(() => {
     const interval = setInterval(() => setCurrent((i) => (i + 1) % testimonials.length), 4000);
     return () => clearInterval(interval);
+  }, []);
+  // Scrollspy effect
+  useEffect(() => {
+    const sections = ["solutions", "impact", "mission", "contact"];
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + 100;
+      for (const id of sections) {
+        const el = document.getElementById(id);
+        if (el && el.offsetTop <= scrollPosition && el.offsetTop + el.offsetHeight > scrollPosition) {
+          setActiveSection(id);
+          break;
+        }
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
@@ -57,16 +76,36 @@ export default function Home() {
         </div>
         <nav className={`flex-col md:flex md:flex-row md:items-center gap-4 md:gap-8 text-gray-800 font-medium text-sm absolute md:static top-full left-0 w-full md:w-auto bg-white md:bg-transparent p-4 md:p-0 shadow md:shadow-none z-40 ${isMenuOpen ? "flex" : "hidden md:flex"}`}>
           <button onClick={() => setIsMenuOpen(false)}>
-            <a href="#solutions" className="hover:text-primary">Our Solutions</a>
+            <a
+              href="#solutions"
+              className={`hover:text-primary ${activeSection === "solutions" ? "text-primary font-semibold" : ""}`}
+            >
+              Our Solutions
+            </a>
           </button>
           <button onClick={() => setIsMenuOpen(false)}>
-            <a href="#impact" className="hover:text-primary">Our Impact</a>
+            <a
+              href="#impact"
+              className={`hover:text-primary ${activeSection === "impact" ? "text-primary font-semibold" : ""}`}
+            >
+              Our Impact
+            </a>
           </button>
           <button onClick={() => setIsMenuOpen(false)}>
-            <a href="#mission" className="hover:text-primary">Join the mission</a>
+            <a
+              href="#mission"
+              className={`hover:text-primary ${activeSection === "mission" ? "text-primary font-semibold" : ""}`}
+            >
+              Join the mission
+            </a>
           </button>
           <button onClick={() => setIsMenuOpen(false)}>
-            <a href="#contact" className="hover:text-primary">Contact</a>
+            <a
+              href="#contact"
+              className={`hover:text-primary ${activeSection === "contact" ? "text-primary font-semibold" : ""}`}
+            >
+              Contact
+            </a>
           </button>
         </nav>
         <div className="flex items-center">
@@ -298,6 +337,15 @@ export default function Home() {
           <span>Contact : <a href="mailto:contact@kenomi.org" className="underline">contact@kenomi.eu</a></span>
         </div>
       </footer>
+      {/* Sticky bouton don / up */}
+      {/* Boutons sticky en bas à droite */}
+      {/* --- Sticky Don & Scroll Up --- */}
+      {/* Gestion sticky, animation, dark mode */}
+      {/*
+        - Bouton "Faire un don" : sticky, bas droite, visible en permanence, anim hover, icône cœur, redirection ancre ou page don
+        - Bouton "↑" up : sticky, juste au-dessus, visible si scroll > 200px, fade-in/out, rond, anim hover, scroll top
+      */}
+      <StickyDonUpButtons />
     </main>
   );
 }
@@ -358,5 +406,92 @@ function Testimonial({ name, text }: { name: string; text: string }) {
       <p className="text-gray-700 italic mb-3">&quot;{text}&quot;</p>
       <div className="text-right text-sm text-gray-600 font-semibold">{name}</div>
     </motion.div>
+  );
+}
+
+// Sticky bouton don / up
+import { FaHeart, FaArrowUp } from "react-icons/fa";
+
+function StickyDonUpButtons() {
+  const [showUp, setShowUp] = useState(false);
+  // Scroll handler pour afficher le bouton up
+  useEffect(() => {
+    const onScroll = () => {
+      setShowUp(window.scrollY > 200);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Handler scroll top
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Handler scroll to don (si section don existe, sinon redirige vers /don)
+  const handleDonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Si section avec id "don" existe, scroll, sinon redirige
+    const donSection = document.getElementById("don");
+    if (donSection) {
+      donSection.scrollIntoView({ behavior: "smooth" });
+    } else {
+      window.location.href = "/don";
+    }
+  };
+
+  return (
+    <div
+      className="fixed z-[120] bottom-15 right-15 flex flex-col items-end gap-3 pointer-events-none"
+      style={{}}
+    >
+      {/* Bouton up */}
+      <button
+        aria-label="Remonter en haut"
+        onClick={handleScrollTop}
+        tabIndex={showUp ? 0 : -1}
+        className={`
+          mb-2
+          transition-all duration-300
+          rounded-full shadow-lg
+          bg-white/90 dark:bg-black/80
+          text-primary dark:text-green-300
+          w-12 h-12 flex items-center justify-center text-2xl
+          border border-primary/40 dark:border-green-700
+          hover:bg-primary hover:text-white dark:hover:bg-green-500 dark:hover:text-black
+          focus:outline-none
+          ${showUp ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none translate-y-6"}
+        `}
+        style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.15)" }}
+      >
+        <FaArrowUp />
+      </button>
+      {/* Bouton don */}
+      <button
+        aria-label="Faire un don"
+        onClick={handleDonClick}
+        className={`
+          transition-all duration-200
+          rounded-full shadow-xl
+          bg-gradient-to-r from-green-400 to-blue-500
+          dark:from-green-600 dark:to-blue-800
+          text-white
+          flex items-center justify-center gap-2
+          px-5 py-3
+          text-base font-bold
+          border-2 border-white dark:border-black
+          hover:scale-105 hover:shadow-2xl
+          active:scale-95
+          focus:outline-none
+          pointer-events-auto
+        `}
+        style={{
+          boxShadow: "0 4px 18px rgba(50,180,100,0.17)",
+        }}
+      >
+        <FaHeart className="text-lg animate-pulse" />
+        <span className="hidden sm:inline">Faire un don</span>
+      </button>
+    </div>
   );
 }
