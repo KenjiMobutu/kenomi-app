@@ -3,13 +3,14 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
+import { HeartPulse, School, ShieldCheck, Users2 } from 'lucide-react';
 
-// Données statiques
+// Données pour la section Impact (mises à jour)
 const stats = [
-  { label: "Bénéficiaires", value: 15000 },
-  { label: "ONG partenaires", value: 23 },
-  { label: "Projets financés", value: 12 },
-  { label: "Zones d'action", value: 3, display: "Kinshasa, Goma, Bukavu" },
+  { label: "Vies améliorées en RDC", value: 1500, color: "text-red-600" },
+  { label: "Enfants scolarisés grâce à nos outils", value: 500, color: "text-blue-600" },
+  { label: "Heures de formation en Belgique", value: 250, color: "text-teal-600" },
+  { label: "Personnes (re)connectées au numérique", value: 45, color: "text-yellow-600" },
 ];
 
 const solutions = [
@@ -201,10 +202,41 @@ export default function Home() {
       >
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">À propos de Kenomi</h2>
-          <p className="text-lg text-gray-700 leading-relaxed">
-            Kenomi est une initiative technologique à but humanitaire qui vise à améliorer l’accès aux soins de santé, à l’éducation et à la protection de l’enfance en République Démocratique du Congo.
-            Nous croyons en une technologie inclusive, éthique et solidaire, capable de transformer les vies durablement. Nos solutions s'appuient sur des partenariats locaux et un modèle économique responsable.
+          <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            La Technologie au Service du Progrès Humain
           </p>
+          <p className="mt-6 text-lg leading-8 text-gray-600">
+            Kenomi est une initiative humanitaire qui met la technologie au service d'un numérique inclusif, éthique et solidaire.
+          </p>
+          <div className="mt-16 bg-white p-8 sm:p-12 rounded-2xl shadow-lg">
+                <h3 className="text-xl font-bold tracking-tight text-gray-900">Notre double engagement : Belgique & RDC </h3>
+
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-10">
+                    <div>
+                        <h4 className="text-lg font-semibold leading-7 text-gray-800">Engagement Local en Belgique</h4>
+                        <p className="mt-2 text-base leading-7 text-gray-600">
+                            Nous luttons contre la fracture numérique via des formations à l'hygiène numérique. Nous nous consacrons aussi à améliorer l'accès au digital pour les plus vulnérables, comme les personnes âgées et les enfants défavorisés, afin que personne ne soit laissé pour compte.
+                        </p>
+                    </div>
+                    <div>
+                        <h4 className="text-lg font-semibold leading-7 text-gray-800">Action Internationale en RDC</h4>
+                        <p className="mt-2 text-base leading-7 text-gray-600">
+                            Au cœur de la République Démocratique du Congo,
+                            nous développons des solutions technologiques
+                            pour transformer l’accès aux soins de santé,
+                            à l’éducation et à la protection de l’enfance.
+                            En collaboration avec nos partenaires locaux,
+                            nous créons des outils qui répondent à des besoins concrets.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="mt-10 pt-6 border-t border-gray-200 text-center">
+                    <p className="text-base font-semibold text-gray-700">
+                        Que ce soit en Belgique ou au Congo, notre conviction reste la même : la technologie doit être un levier d'émancipation et de dignité pour tous.
+                    </p>
+                </div>
+            </div>
         </div>
       </motion.section>
 
@@ -212,33 +244,92 @@ export default function Home() {
       <motion.section id="solutions" initial={{ opacity: 0, y: 60 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 1 }}
         className="w-full py-16 bg-white px-6"
       >
-        <h2 className="text-3xl font-bold text-gray-900 text-center mb-10">Nos solutions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
-          {solutions.map((sol, idx) => (
-            <motion.div
-              key={idx}
-              whileHover={{ rotateY: 8, scale: 1.05, boxShadow: "0px 8px 32px rgba(50, 180, 100, 0.13)" }}
-              className="bg-gradient-to-tr from-green-100 to-blue-100 rounded-xl p-6 shadow flex flex-col items-center text-center cursor-pointer"
-            >
-              <div className="text-4xl mb-3">{sol.icon}</div>
-              <h3 className="text-xl text-black font-semibold mb-2">{sol.title}</h3>
-              <p className="text-gray-600">{sol.desc}</p>
-            </motion.div>
-          ))}
+        <div className="bg-white py-16 sm:py-24">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="text-center">
+                <h2 className="text-base font-semibold leading-7 text-indigo-600">Nos Pôles d'Action</h2>
+                <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                    Des solutions concrètes, un impact durable
+                </p>
+            </div>
+
+            <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {/* Card 1: Santé RDC */}
+                <div className="group p-8 bg-gray-50 rounded-2xl border border-gray-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+                    <div className="bg-red-100 text-red-600 p-3 rounded-lg inline-block mb-4">
+                        <HeartPulse color="red" size={48} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">Santé & Soins en RDC</h3>
+                    <p className="mt-2 text-base text-gray-600">
+                        Déploiement d'outils pour améliorer l'accès aux soins de santé primaires et à la protection infantile.
+                    </p>
+                </div>
+
+                {/* <!-- Card 2: Éducation RDC --> */}
+                <div className="group p-8 bg-gray-50 rounded-2xl border border-gray-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+                    <div className="bg-blue-100 text-blue-600 p-3 rounded-lg inline-block mb-4">
+                        <School color="blue" size={48} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">Éducation & Avenir en RDC</h3>
+                    <p className="mt-2 text-base text-gray-600">
+                        Création de plateformes éducatives pour offrir un meilleur avenir aux enfants et renforcer les compétences locales.
+                    </p>
+                </div>
+
+                {/* <!-- Card 3: Hygiène Numérique Belgique --> */}
+                <div className="group p-8 bg-gray-50 rounded-2xl border border-gray-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+                    <div className="bg-teal-100 text-teal-600 p-3 rounded-lg inline-block mb-4">
+                        <ShieldCheck color="teal" size={48} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">Hygiène Numérique en Belgique</h3>
+                    <p className="mt-2 text-base text-gray-600">
+                        Ateliers de formation pour naviguer le monde digital en toute sécurité et se prémunir contre les risques en ligne.
+                    </p>
+                </div>
+
+                {/* <!-- Card 4: Inclusion Belgique --> */}
+                <div className="group p-8 bg-gray-50 rounded-2xl border border-gray-200 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+                    <div className="bg-yellow-100 text-yellow-600 p-3 rounded-lg inline-block mb-4">
+                        <Users2 color="orange" size={48} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">Inclusion Digitale en Belgique</h3>
+                    <p className="mt-2 text-base text-gray-600">
+                        Programmes dédiés pour faciliter l'accès au numérique pour les seniors et les jeunes issus de milieux défavorisés.
+                    </p>
+                </div>
+            </div>
         </div>
+    </div>
       </motion.section>
 
-      {/* Notre impact */}
-      <motion.section id="impact" initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 1 }}
-        className="w-full py-16 bg-gradient-to-l from-blue-50 via-green-50 to-white px-6"
+      {/* --- SECTION NOTRE IMPACT MISE À JOUR --- */}
+      <motion.section
+        id="impact"
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1 }}
+        className="w-full py-16 sm:py-24 bg-gradient-to-br from-blue-50 via-white to-green-50 px-6"
       >
-        <h2 className="text-3xl font-bold text-gray-900 text-center mb-10">Notre impact</h2>
-        <div className="flex flex-wrap text-black justify-center gap-8 max-w-5xl mx-auto">
-          {stats.map((stat, i) => (
-            <AnimatedStat key={stat.label} value={stat.value} label={stat.label} display={stat.display} delay={i * 0.2} />
-          ))}
+        <div className="max-w-7xl mx-auto">
+            <div className="text-center">
+                <h2 className="text-base font-semibold leading-7 text-indigo-600">Nos Résultats</h2>
+                <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                    Notre Impact en Chiffres
+                </p>
+                <p className="mt-6 max-w-2xl mx-auto text-lg leading-8 text-gray-600">
+                    Chaque chiffre représente une vie changée, une compétence acquise ou une communauté renforcée grâce à votre soutien.
+                </p>
+            </div>
+            <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+              {stats.map((stat, i) => (
+                <AnimatedStat key={stat.label} value={stat.value} label={stat.label} color={stat.color} delay={i * 0.2} />
+              ))}
+            </div>
         </div>
       </motion.section>
+      {/* --- FIN DE LA SECTION MISE À JOUR --- */}
+
 
       {/* Rejoindre la mission */}
       <motion.section id="mission" initial={{ opacity: 0, y: 60 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 1 }}
@@ -352,13 +443,13 @@ export default function Home() {
 
 // Chiffres animés
 type AnimatedStatProps = {
-  value: number | string;
+  value: number;
   label: string;
-  display?: string;
+  color?: string;
   delay?: number;
 };
 
-function AnimatedStat({ value, label, display, delay = 0 }: AnimatedStatProps) {
+function AnimatedStat({ value, label, color = "text-primary", delay = 0 }: AnimatedStatProps) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     let start = 0;
@@ -383,13 +474,12 @@ function AnimatedStat({ value, label, display, delay = 0 }: AnimatedStatProps) {
       whileInView={{ scale: 1, opacity: 1 }}
       viewport={{ once: true }}
       transition={{ delay, duration: 0.5, type: "spring" }}
-      className="bg-white border border-gray-200 rounded-xl px-8 py-6 flex flex-col items-center shadow"
+      className="p-6 bg-white/50 backdrop-blur-sm rounded-2xl border border-gray-200/50 shadow-lg"
     >
-      <span className="text-2xl font-bold text-primary mb-1">
-        {typeof value === "number" ? (label === "Bénéficiaires" ? "+" : "") + count.toLocaleString("fr-FR") : value}
-      </span>
-      <span className="text-gray-700">{label}</span>
-      {display && <span className="text-xs text-gray-500">{display}</span>}
+      <p className={`text-5xl font-extrabold ${color}`}>
+        {count.toLocaleString("fr-FR")}
+      </p>
+      <p className="mt-2 text-base font-medium text-gray-700">{label}</p>
     </motion.div>
   );
 }
