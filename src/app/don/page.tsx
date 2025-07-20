@@ -213,7 +213,7 @@ export default function DonationPage() {
                 )}
               </div>
               <p className="text-xs text-center text-gray-500">
-                Votre don peut être déductible des impôts. Un reçu fiscal vous sera envoyé.
+                🔒 Votre don peut être déductible des impôts. Un reçu fiscal vous sera envoyé.
               </p>
             </form>
           </div>

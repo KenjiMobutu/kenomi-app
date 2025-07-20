@@ -4,7 +4,7 @@ import Image from "next/image";
 import { motion, useAnimation, useInView, AnimatePresence, animate } from "framer-motion";
 import { useEffect, useState, useRef, ReactNode } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
-import { HeartPulse, School, ShieldCheck, Users2, Heart, ArrowUp, Menu, X } from 'lucide-react';
+import { HeartPulse, School, ShieldCheck, Users2, Heart, ArrowUp, Menu, X ,Lightbulb} from 'lucide-react';
 
 // --- Data ---
 const navLinks = [
@@ -22,11 +22,11 @@ const statsData = [
 ];
 
 const solutionsData = [
-    { icon: HeartPulse, title: "Santé & Soins en RDC", desc: "Déploiement d'outils pour améliorer l'accès aux soins de santé primaires et à la protection infantile.", color: "red" },
-    { icon: School, title: "Éducation & Avenir en RDC", desc: "Création de plateformes éducatives pour offrir un meilleur avenir aux enfants et renforcer les compétences locales.", color: "blue" },
-    { icon: ShieldCheck, title: "Hygiène Numérique en Belgique", desc: "Ateliers de formation pour naviguer le monde digital en toute sécurité et se prémunir contre les risques en ligne.", color: "teal" },
-    { icon: Users2, title: "Inclusion Digitale en Belgique", desc: "Programmes dédiés pour faciliter l'accès au numérique pour les seniors et les jeunes issus de milieux défavorisés.", color: "yellow" }
-];
+    { icon: ShieldCheck, title: "Formation & Sensibilisation (BE)", desc: "Nous formons tous les publics (entreprises, seniors, enfants) à la cybersécurité et à la citoyenneté numérique.", color: "teal" },
+    { icon: Users2, title: "Inclusion & Reconditionnement (BE)", desc: "Nous formons des jeunes au reconditionnement de matériel informatique, que nous distribuons ensuite pour réduire la fracture numérique locale.", color: "yellow" },
+    { icon: School, title: "Éducation & Avenir (RDC)", desc: "En partenariat avec des acteurs locaux, nous soutenons la formation des jeunes aux métiers du numérique pour leur offrir un meilleur avenir.", color: "blue" },
+    { icon: Lightbulb, title: "Innovation & Impact Social", desc: "Nous développons des solutions technologiques et des outils pédagogiques pour répondre à des besoins sociaux concrets.", color: "red" }
+  ];
 
 const testimonialsData = [
   { name: "Marie, bénéficiaire", text: "Grâce à Kenomi, ma fille a pu accéder à des soins vitaux et retourner à l’école." },
@@ -70,6 +70,7 @@ export default function Home() {
       <Solutions />
       <Impact />
       <Mission />
+      <TransparentSection/>
       <Newsletter />
       <Footer />
       <StickyButtons />
@@ -221,7 +222,8 @@ function Hero() {
                         La technologie au service de l’humain.
                     </h1>
                     <p className="text-xl text-white/90 mb-8 drop-shadow">
-                        Santé, éducation, protection : développons ensemble un futur digne.
+                        " Kenomi forme les jeunes aux métiers du numérique en Belgique et en RDC,
+                        et sensibilise tous les publics à la cybersécurité."
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4">
                         <motion.a whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.95 }} href="#about" className="px-8 py-3 bg-gradient-to-r from-green-500 to-blue-600 text-white rounded-full font-semibold shadow-lg text-center">
@@ -257,16 +259,20 @@ function About() {
                 <div className="mt-16 bg-white p-8 sm:p-12 rounded-2xl shadow-lg text-left">
                     <h3 className="text-xl font-bold tracking-tight text-gray-900 text-center">Notre double engagement : Belgique & RDC</h3>
                     <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+
                         <div>
-                            <h4 className="text-lg font-semibold leading-7 text-gray-800">Action Internationale en RDC</h4>
+                            <h4 className="text-lg font-semibold leading-7 text-gray-800">Engagement Local en Belgique 🇧🇪</h4>
                             <p className="mt-2 text-base leading-7 text-gray-600">
-                                Au cœur de la République Démocratique du Congo, nous développons des solutions technologiques pour transformer l’accès aux soins de santé, à l’éducation et à la protection de l’enfance. En collaboration avec nos partenaires locaux, nous créons des outils qui répondent à des besoins concrets.
+                                Formation de jeunes au reconditionnement informatique. Nous leur offrons les compétences nécessaires pour entrer dans le monde du travail, tout en promouvant une économie circulaire et durable. Grâce à nos ateliers, nous sensibilisons également le grand public à la cybersécurité et à l'hygiène numérique.
+
                             </p>
                         </div>
                         <div>
-                            <h4 className="text-lg font-semibold leading-7 text-gray-800">Engagement Local en Belgique</h4>
+                            <h4 className="text-lg font-semibold leading-7 text-gray-800">Action Internationale en RDC 🇨🇩</h4>
                             <p className="mt-2 text-base leading-7 text-gray-600">
-                                Nous luttons contre la fracture numérique via des formations à l'hygiène numérique. Nous nous consacrons aussi à améliorer l'accès au digital pour les plus vulnérables, comme les personnes âgées et les enfants défavorisés, afin que personne ne soit laissé pour compte.
+                                Formation de jeunes aux métiers du développement web.
+                                Soutien à l'entrepreneuriat numérique local.
+                                Création d'opportunités pour l'économie locale.
                             </p>
                         </div>
                     </div>
@@ -291,9 +297,33 @@ function Solutions() {
     return (
         <motion.section id="solutions" className="w-full py-16 sm:py-24 bg-gray-50 px-6 lg:px-8"
             variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+                <section className="py-16 md:py-24" style={{ backgroundImage: "url('/cardbg2.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                    <div className="container mx-auto px-6 text-center bg-white/90 backdrop-blur-sm p-12 rounded-lg shadow-xl">
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-800">Votre Don a un Impact Concret</h2>
+                        <p className="mt-2 text-lg text-gray-600 max-w-2xl mx-auto">Chaque contribution, petite ou grande, nous aide à changer des vies. Voyez comment votre don se transforme en action.</p>
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
+                            <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+                                <p className="text-4xl font-extrabold text-blue-700">25 €</p>
+                                <p className="mt-2 text-black font-semibold">Finance un kit d'outils pour un jeune en formation de reconditionnement.</p>
+                            </div>
+                            <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+                                <p className="text-4xl font-extrabold text-blue-700">50 €</p>
+                                <p className="mt-2 text-black font-semibold">Offre une session de formation complète à la cybersécurité pour un senior.</p>
+                            </div>
+                            <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200 sm:col-span-2 lg:col-span-1">
+                                <p className="text-4xl font-extrabold text-blue-700">150 €</p>
+                                <p className="mt-2 text-black font-semibold">Fournit un ordinateur reconditionné complet à un étudiant dans le besoin.</p>
+                            </div>
+                        </div>
+                        <a href="/don" className="mt-12 inline-block bg-yellow-400 text-blue-900 px-10 py-4 rounded-full font-bold text-xl hover:bg-yellow-300 transition-transform transform hover:scale-105">
+                            Je Fais un Don
+                        </a>
+                    </div>
+                </section>
+        <br></br>
             <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-16">
-                    <h2 className="text-base font-semibold leading-7 text-indigo-600">Nos Pôles d'Action</h2>
+                    <h2 className="text-xl font-semibold leading-7  text-indigo-600">Nos Pôles d'Action</h2>
                     <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
                         Des solutions concrètes, un impact durable
                     </p>
@@ -411,6 +441,28 @@ function Testimonial({ name, text }: { name: string; text: string }) {
         </div>
     );
 }
+
+function TransparentSection() {
+    return(
+    <section className="bg-gray-100 py-16 md:py-24">
+            <div className="container mx-auto px-6 text-center">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-800">Notre Engagement : La Transparence</h2>
+                <p className="mt-2 text-lg text-gray-600 max-w-2xl mx-auto">La confiance est au cœur de notre démarche. Découvrez qui nous sommes et comment nous travaillons.</p>
+                <div className="mt-12 grid md:grid-cols-2 gap-8 text-left">
+                    <div className="bg-white p-8 rounded-lg shadow-md">
+                        <h3 className="text-2xl font-bold text-blue-700 mb-4">Qui Sommes-Nous ?</h3>
+                        <p className="text-gray-700 mb-4">Kenomi a été fondée par des passionnés de technologie et d'impact social, convaincus que le numérique doit être une opportunité pour tous. Nous sommes une ASBL enregistrée en Belgique, animée par des valeurs de partage, d'intégrité et de solidarité.</p>
+                        <a href="#" className="text-blue-600 font-bold hover:underline">Découvrir l'équipe →</a>
+                    </div>
+                    <div className="bg-white p-8 rounded-lg shadow-md">
+                        <h3 className="text-2xl font-bold text-blue-700 mb-4">Nos Rapports</h3>
+                        <p className="text-gray-700 mb-4">Chaque année, nous publions un rapport d'activité détaillé. Vous y trouverez nos chiffres clés, nos succès, nos défis et un aperçu financier complet. Votre confiance est notre priorité.</p>
+                        <a href="#" className="text-blue-600 font-bold hover:underline">Consulter le rapport 2024 →</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+)}
 
 function Newsletter() {
     return (
