@@ -1,26 +1,80 @@
 'use client';
 
 import { motion } from "framer-motion";
-import { useState, useEffect, FormEvent } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { useState, useEffect, FormEvent, useRef } from "react";
+// import { loadStripe } from "@stripe/stripe-js"; // Retiré pour chargement par CDN
+// import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js"; // Retiré pour chargement par CDN
+import { memo } from 'react'; // Import memo pour l'optimisation
+import Script from 'next/script'; // Import pour charger les scripts externes
 
-// --- SVG Icons for a professional look ---
-const HeartIcon = () => (
+// --- Optimisation: Définition des icônes en dehors du composant ---
+const HeartIcon = memo(() => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-3 flex-shrink-0 text-pink-300">
         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
     </svg>
-);
-const CheckIcon = () => (
+));
+HeartIcon.displayName = 'HeartIcon';
+
+const CheckIcon = memo(() => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-white">
         <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
-);
+));
+CheckIcon.displayName = 'CheckIcon';
 
 
 // --- Configuration ---
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+// const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!); // Remplacé par chargement via <Script>
 const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "sb";
+const stripePublicKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!;
+
+// --- Composant Wrapper pour le bouton PayPal ---
+const PayPalPaymentButton = ({ amount, createOrder, onApprove, isSdkReady, disabled, onError }: {
+  amount: number;
+  createOrder: (data: any, actions: any) => any;
+  onApprove: (data: any, actions: any) => Promise<void>;
+  isSdkReady: boolean;
+  disabled: boolean;
+  onError: (err: any) => void;
+}) => {
+    const paypalRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (isSdkReady && (window as any).paypal && paypalRef.current) {
+            // Vider le conteneur avant de rendre un nouveau bouton
+            paypalRef.current.innerHTML = "";
+
+            try {
+                // Rendre le nouveau bouton
+                (window as any).paypal.Buttons({
+                    createOrder,
+                    onApprove,
+                    onError,
+                    style: {
+                        layout: "horizontal",
+                        tagline: false,
+                        height: 55,
+                    },
+                    fundingSource: (window as any).paypal.FUNDING.PAYPAL,
+                }).render(paypalRef.current).catch((err: any) => {
+                    console.error("Échec du rendu des boutons PayPal :", err);
+                    onError(err);
+                });
+            } catch (err) {
+                 console.error("Erreur lors de l'initialisation de PayPal :", err);
+                 onError(err);
+            }
+        }
+    }, [isSdkReady, amount, disabled, createOrder, onApprove, onError]); // Re-rendre si ces props changent
+
+    if (!isSdkReady) {
+        return <div className="w-full px-6 py-4 bg-gray-200 text-gray-500 text-lg font-bold rounded-lg text-center animate-pulse">Chargement PayPal...</div>;
+    }
+
+    // Conteneur où le bouton PayPal sera injecté
+    return <div ref={paypalRef} id="paypal-button-container"></div>;
+}
+
 
 export default function DonationPage() {
   // --- Component State ---
@@ -30,6 +84,7 @@ export default function DonationPage() {
   const [isCustomAmount, setIsCustomAmount] = useState(false);
   const [frequency, setFrequency] = useState<'once' | 'monthly'>('once');
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal'>('stripe');
+  const [isSdkReady, setIsSdkReady] = useState(false); // État pour le chargement du SDK PayPal
 
   // --- Effects ---
   useEffect(() => {
@@ -79,6 +134,16 @@ export default function DonationPage() {
     };
 
     try {
+      // Vérifier si Stripe.js est chargé
+      if (!(window as any).Stripe) {
+          throw new Error("Stripe.js n'a pas pu être chargé. Veuillez rafraîchir la page.");
+      }
+      // Initialiser Stripe
+      const stripe = (window as any).Stripe(stripePublicKey);
+      if (!stripe) {
+           throw new Error("Impossible d'initialiser Stripe.");
+      }
+
       const res = await fetch("/api/checkout_sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -89,8 +154,8 @@ export default function DonationPage() {
         throw new Error(errorData.message || "La création de la session de paiement a échoué.");
       }
       const data = await res.json();
-      const stripe = await stripePromise;
-      await stripe?.redirectToCheckout({ sessionId: data.id });
+      // const stripe = await stripePromise; // Remplacé par l'initialisation ci-dessus
+      await stripe.redirectToCheckout({ sessionId: data.id });
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -100,6 +165,11 @@ export default function DonationPage() {
 
   // --- PayPal Logic ---
   const createPayPalOrder = (data: any, actions: any) => {
+    // S'assurer que le montant est valide avant de créer l'ordre
+    if (amount <= 0) {
+        setError("Montant PayPal non valide.");
+        return;
+    }
     return actions.order.create({
       purchase_units: [{
         description: "Don pour la mission Kenomi",
@@ -122,9 +192,27 @@ export default function DonationPage() {
     }
   };
 
+  const onPayPalError = (err: any) => {
+    console.error("Erreur PayPal :", err);
+    setError("Une erreur est survenue avec PayPal. Veuillez réessayer ou utiliser une autre méthode.");
+  }
+
   // --- Component Render ---
   return (
-    <PayPalScriptProvider options={{ "client-id": paypalClientId, currency: "EUR", intent: "capture" }}>
+    // Retrait du PayPalScriptProvider
+    <>
+      <Script
+          src="https://js.stripe.com/v3/"
+          strategy="afterInteractive"
+          onError={(e) => setError("Impossible de charger le script de paiement Stripe.")}
+      />
+      <Script
+          src={`https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=EUR&intent=capture`}
+          onLoad={() => setIsSdkReady(true)}
+          onError={(e) => setError("Impossible de charger le script de paiement PayPal.")}
+          strategy="afterInteractive"
+      />
+
       <main className="min-h-screen bg-gray-100 font-sans flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -142,11 +230,12 @@ export default function DonationPage() {
               className="w-80 h-80 object-cover mb-8  border-white/50 shadow-lg"
             />
             <h2 className="text-3xl font-bold leading-tight mb-4">Changez une vie aujourd'hui.</h2>
-            <p className="text-teal-100 text-lg mb-6 max-w-sm">Chaque contribution nous rapproche de notre objectif : un avenir meilleur pour chaque enfant et chaque aîné.</p>
+            <p className="text-teal-100 text-lg mb-6 max-w-sm">Chaque contribution nous rapproche de notre objectif : un avenir numérique plus sûr et plus inclusif en Belgique.</p>
+            {/* MODIFIÉ: Retrait des références à la RDC. */}
             <div className="space-y-4 text-left text-teal-50 text-sm">
-              <div className="flex items-start"><HeartIcon /><p><span className="font-bold">20€</span> &ndash; Finance un atelier d'initiation au numérique.</p></div>
-              <div className="flex items-start"><HeartIcon /><p><span className="font-bold">50€</span> &ndash; Offre un kit scolaire complet et un uniforme en RDC.</p></div>
-              <div className="flex items-start"><HeartIcon /><p><span className="font-bold">100€</span> &ndash; Permet une consultation médicale et les vaccins essentiels.</p></div>
+              <div className="flex items-start"><HeartIcon /><p><span className="font-bold">25€</span> &ndash; Finance un atelier de sensibilisation à la sécurité pour un senior.</p></div>
+              <div className="flex items-start"><HeartIcon /><p><span className="font-bold">50€</span> &ndash; Contribue à l'achat de logiciels pour un "Kit d'Autonomie".</p></div>
+              <div className="flex items-start"><HeartIcon /><p><span className="font-bold">150€</span> &ndash; Finance un ordinateur reconditionné pour un jeune du programme "Tremplin Numérique".</p></div>
             </div>
           </div>
 
@@ -163,8 +252,9 @@ export default function DonationPage() {
 
               <div>
                 <h3 className="font-bold text-gray-800 text-lg mb-3">Sélectionnez un montant</h3>
+                 {/* MODIFIÉ: Montants alignés sur la description (25, 50, 150) */}
                 <div className="grid grid-cols-2 gap-3">
-                    {[20, 50, 100].map((val) => (
+                    {[25, 50, 150].map((val) => (
                         <button type="button" key={val} onClick={() => handleAmountSelect(val)} className={`relative text-left p-3 border-2 rounded-lg font-bold text-gray-700 transition-all ${!isCustomAmount && amount === val ? 'border-grey-500 bg-teal-50' : 'border-gray-200 bg-gray-50 hover:border-gray-400'}`}>
                             {val}€
                             {!isCustomAmount && amount === val && <div className="absolute top-2 right-2 bg-black rounded-full h-5 w-5 flex items-center justify-center"><CheckIcon/></div>}
@@ -209,7 +299,15 @@ export default function DonationPage() {
                     {loading ? 'Traitement...' : `Faire un don de ${amount}€`}
                   </motion.button>
                 ) : (
-                  <PayPalButtons style={{ layout: "horizontal", tagline: false, height: 55 }} createOrder={createPayPalOrder} onApprove={onPayPalApprove} disabled={loading || amount <= 0} />
+                  // Remplacement de PayPalButtons par notre wrapper
+                  <PayPalPaymentButton
+                      isSdkReady={isSdkReady}
+                      amount={amount}
+                      createOrder={createPayPalOrder}
+                      onApprove={onPayPalApprove}
+                      onError={onPayPalError}
+                      disabled={loading || amount <= 0}
+                  />
                 )}
               </div>
               <p className="text-xs text-center text-gray-500">
@@ -219,6 +317,7 @@ export default function DonationPage() {
           </div>
         </motion.div>
       </main>
-    </PayPalScriptProvider>
+    </>
   );
 }
+
