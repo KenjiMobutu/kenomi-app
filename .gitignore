@@ -1,6 +1,6 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Voir https://help.github.com/articles/ignoring-files/
 
-# dependencies
+# Dépendances
 /node_modules
 /.pnp
 .pnp.*
@@ -10,35 +10,45 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# Tests
 /coverage
 
-# next.js
+# Next.js
 /.next/
 /out/
 
-# production
+# Production
 /build
 
-# misc
+# Divers
 .DS_Store
 *.pem
 
-# debug
+# Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Env (include .env.local.*, etc.)
+.env
+.env.*       # catch .env.local, .env.production etc.
 
-# vercel
+# Vercel
 .vercel
 
-# typescript
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
 
-# clerk configuration (can include secrets)
-/.clerk/
+# Clerk
+/clerk/
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# Optional lock detection
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
