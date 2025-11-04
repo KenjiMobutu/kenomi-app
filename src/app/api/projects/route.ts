@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { addProject } from '@/lib/actions';
 import { auth } from '@clerk/nextjs/server';
-import { updateProject } from '@/lib/actions';
+// MODIFIÉ: Retrait de 'updateProject' qui est redondant ici
+// import { updateProject } from '@/lib/actions';
 
 
 export async function POST(req: Request) {
@@ -19,6 +20,9 @@ export async function POST(req: Request) {
   }
 }
 
+// MODIFIÉ: Retrait du handler PATCH qui n'est pas sémantiquement correct
+// sur la route de collection. Les mises à jour se font via /api/projects/[id]
+/*
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const { userId, sessionClaims } = await auth() as {
     userId: string,
@@ -36,3 +40,4 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   return NextResponse.json({ success: true });
 }
+*/

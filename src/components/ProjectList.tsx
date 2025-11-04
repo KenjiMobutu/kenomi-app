@@ -15,6 +15,8 @@ export default function ProjectList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  // Ajout d'un état pour la recherche décalée (debounced)
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,9 +26,23 @@ export default function ProjectList() {
     fetchProjects();
   }, []);
 
+  // Effet pour décaler la recherche (debounce)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300); // Délai de 300ms
+
+    // Nettoyage du minuteur
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [search]);
+
   useEffect(() => {
     handleFilter();
-  }, [projects, search, startDate, endDate]);
+  // MODIFIÉ: Corrigé la dépendance de 'search' à 'debouncedSearch'
+  // Le filtrage ne s'exécute que lorsque la valeur décalée est mise à jour
+  }, [projects, debouncedSearch, startDate, endDate]);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -46,18 +62,23 @@ export default function ProjectList() {
     const confirm = window.confirm('Supprimer ce projet ?');
     if (!confirm) return;
 
+    // TODO: Gérer l'état de chargement et les erreurs de suppression
     const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
     if (res.ok) {
       setProjects(projects.filter((p) => p.id !== id));
+    } else {
+      // Afficher une erreur à l'utilisateur
+      alert("La suppression a échoué.");
     }
   };
 
   const handleFilter = () => {
     let result = [...projects];
 
-    if (search) {
+    // Utilisation de debouncedSearch pour le filtrage
+    if (debouncedSearch) {
       result = result.filter((p) =>
-        p.title.toLowerCase().includes(search.toLowerCase())
+        p.title.toLowerCase().includes(debouncedSearch.toLowerCase())
       );
     }
 
@@ -66,7 +87,10 @@ export default function ProjectList() {
     }
 
     if (endDate) {
-      result = result.filter((p) => new Date(p.created_at) <= new Date(endDate));
+      // Ajout d'un jour à la date de fin pour inclure toute la journée
+      const adjustedEndDate = new Date(endDate);
+      adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
+      result = result.filter((p) => new Date(p.created_at) < adjustedEndDate);
     }
 
     setFiltered(result);
@@ -77,7 +101,7 @@ export default function ProjectList() {
     setSearch('');
     setStartDate('');
     setEndDate('');
-    setFiltered(projects);
+    // setFiltered(projects); // Ceci est géré par le useEffect
     setCurrentPage(1);
   };
 

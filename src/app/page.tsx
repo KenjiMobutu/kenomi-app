@@ -169,7 +169,6 @@ export default function Home() {
 
       {/* AJOUT: Appel au nouveau composant de formation */}
       <TrainingPreviews />
-
       <Impact />
       <Mission />
       <TransparentSection/>
@@ -280,7 +279,8 @@ function Header({ activeSection, isSignedIn }: { activeSection: string, isSigned
     );
 }
 
-function Hero() {
+// MODIFIÉ: Enveloppé dans memo
+const Hero = memo(function Hero() {
     return (
     <section className="relative w-full min-h-screen flex items-center">
       <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full">
@@ -350,11 +350,7 @@ function Hero() {
       </div>
     </section>
   );
-}
-
-function SectionSeparator() {
-    return <div className="w-full h-20 bg-gradient-to-b from-white to-gray-50"></div>;
-}
+});
 
 // MODIFIÉ: Enveloppé dans memo
 const About = memo(function About() {
@@ -375,7 +371,7 @@ const About = memo(function About() {
                     <h3 className="text-xl font-bold tracking-tight text-gray-900 text-center">Un double volet pour un impact 100% local</h3>
                     <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
                         <div>
-                            <h4 className="text-lg font-semibold leading-7 text-gray-800">1. Volet Commercial 💼</h4>
+                            <h4 className="text-lg text-center  font-semibold leading-7 text-gray-800">1. Volet Commercial 💼</h4>
                             {/* MODIFIÉ: Alignement justifié */}
                             <p className="mt-2 text-base leading-7 text-gray-600 text-justify">
                                 C'est notre moteur économique.
@@ -386,7 +382,7 @@ const About = memo(function About() {
                             </p>
                         </div>
                         <div>
-                            <h4 className="text-lg font-semibold leading-7 text-gray-800">2. Volet Social ❤️</h4>
+                            <h4 className="text-lg text-center font-semibold leading-7 text-gray-800">2. Volet Social ❤️</h4>
                             {/* MODIFIÉ: Alignement justifié */}
                             <p className="mt-2 text-base leading-7 text-gray-600 text-justify">
                                 Notre raison d'être. Les bénéfices sont réinvestis dans notre programme <strong>
@@ -479,10 +475,13 @@ const ActionPoles = memo(function ActionPoles() {
                             transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
                             className="group p-8 bg-white rounded-2xl border border-gray-200/80 hover:shadow-xl hover:-translate-y-2 transition-all duration-300"
                         >
-                            <div className={`${iconColors[sol.color as keyof typeof iconColors]} p-3 rounded-lg inline-block mb-4`}>
-                                <sol.icon className="h-8 w-8" />
+                            <div className="flex justify-center mb-4">
+                                <div className={`${iconColors[sol.color as keyof typeof iconColors]} p-3 rounded-lg inline-block`}>
+                                    {/* Centering icon */}
+                                    <sol.icon className="h-8 w-8" />
+                                </div>
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-900">{sol.title}</h3>
+                            <h3 className="text-lg text-center  font-semibold text-gray-900">{sol.title}</h3>
                             {/* MODIFIÉ: Alignement justifié */}
                             <p className="mt-2 text-sm text-gray-600 text-justify">{sol.desc}</p>
                         </motion.div>

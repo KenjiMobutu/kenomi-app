@@ -37,7 +37,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
           <div className="p-6 bg-white/70 rounded-lg shadow border text-left backdrop-blur-sm">
             <h2 className="text-xl text-black font-semibold mb-2">💡 Proposer un projet</h2>
-            <p className="text-gray-600">Soumets une idée qui peut changer des vies en RDC.</p>
+            {/* MODIFIÉ: Retrait de la référence à la RDC */}
+            <p className="text-gray-600">Soumets une idée pour un nouveau projet.</p>
           </div>
           <div className="p-6 bg-white/70 rounded-lg shadow border text-left backdrop-blur-sm">
             <h2 className="text-xl text-black  font-semibold mb-2">📊 Suivre un don</h2>

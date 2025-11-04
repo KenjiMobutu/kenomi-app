@@ -2,15 +2,20 @@ import { NextResponse, NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { deleteProject } from "@/lib/actions";
 import { updateProject } from "@/lib/actions";
-import { supabase } from "@/lib/supabaseClient";
-import { createClient } from "@supabase/supabase-js";
+// MODIFIÉ: Import du client admin pour GET
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+// MODIFIÉ: Retrait de l'import du client public
+// import { supabase } from "@/lib/supabaseClient";
+// MODIFIÉ: Retrait de l'initialisation dupliquée du client
+// import { createClient } from "@supabase/supabase-js";
 
 export async function GET(
   req: NextRequest,
   context: { params: { id: string } }
 ) {
   const { id } = await context.params;
-  const { data, error } = await supabase
+  // MODIFIÉ: Utilisation du client admin pour la lecture
+  const { data, error } = await supabaseAdmin
     .from("Project")
     .select("*")
     .eq("id", id)
@@ -43,6 +48,7 @@ export async function DELETE(
   }
 
   try {
+    // Cette action utilise maintenant le client admin (via actions.ts)
     await deleteProject(params.id);
     return NextResponse.json({ message: "Projet supprimé" });
   } catch (err: any) {
@@ -50,6 +56,8 @@ export async function DELETE(
   }
 }
 
+// MODIFIÉ: Retrait du handler POST redondant pour la mise à jour
+/*
 export async function POST(
   req: Request,
   { params }: { params: { id: string } }
@@ -69,24 +77,26 @@ export async function POST(
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+*/
 
+// MODIFIÉ: Retrait de l'initialisation dupliquée du client
+/*
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY! // 🔐 ici
 );
+*/
 
 export async function PATCH(req: Request, context: { params: { id: string } }) {
   const { id } = context.params;
   const { title, description } = await req.json();
 
-  const { error } = await supabase
-    .from("Project")
-    .update({ title, description })
-    .eq("id", id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  // MODIFIÉ: Utilisation de la fonction action standardisée
+  // qui utilise le client admin
+  try {
+    await updateProject(id, title, description);
+    return NextResponse.json({ message: "Projet mis à jour" });
+  } catch (error: any) {
+     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
-  return NextResponse.json({ message: "Projet mis à jour" });
 }

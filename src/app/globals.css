@@ -22,5 +22,6 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* MODIFIÉ: Utilisation de la variable font CSS pour appliquer la police Geist */
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
