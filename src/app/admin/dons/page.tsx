@@ -9,11 +9,12 @@ export default function AdminDonsPage() {
 
   const isAdmin = user?.publicMetadata?.role === 'admin';
 
+  // MODIFIÉ: Ajout de 'router' aux dépendances
   useEffect(() => {
     if (user && !isAdmin) {
       router.push('/dashboard');
     }
-  }, [user, isAdmin]);
+  }, [user, isAdmin, router]);
 
   if (!user) return <p className="text-center mt-20">Chargement...</p>;
 

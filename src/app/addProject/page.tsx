@@ -6,9 +6,10 @@ export default function AjouterProjet() {
   const [titre, setTitre] = useState('');
   const [description, setDescription] = useState('');
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => { // MODIFIÉ: Typage de l'événement
     e.preventDefault();
-    const { data, error } = await supabase
+    // MODIFIÉ: 'data' (inutilisé) a été retiré
+    const { error } = await supabase
       .from('projets')
       .insert([{ titre, description }]);
 
