@@ -1,16 +1,13 @@
 import { NextResponse, NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { deleteProject } from "@/lib/actions";
-import { updateProject } from "@/lib/actions";
+import { deleteProject, updateProject } from "@/lib/actions";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
 
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const { id } =  context.params;
-  // MODIFIÉ: Utilisation du client admin pour la lecture
+  const { id } = params;
   const { data, error } = await supabaseAdmin
     .from("Project")
     .select("*")
@@ -34,8 +31,6 @@ export async function DELETE(
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
 
-  console.log("Rôle reçu (DELETE):", role);
-
   if (role !== "admin") {
     return NextResponse.json(
       { error: "Accès refusé (admin uniquement)" },
@@ -44,49 +39,19 @@ export async function DELETE(
   }
 
   try {
-    // Cette action utilise maintenant le client admin (via actions.ts)
     await deleteProject(params.id);
     return NextResponse.json({ message: "Projet supprimé" });
   } catch (err: unknown) {
-    // CORRECTION: Vérification du type de l'erreur
     const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
-// MODIFIÉ: Retrait du handler POST redondant pour la mise à jour
-/*
-export async function POST(
+export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const form = await req.formData();
-    const title = form.get("title")?.toString();
-    const description = form.get("description")?.toString();
-
-    if (!title || !description) {
-      return NextResponse.json({ error: "Champs requis" }, { status: 400 });
-    }
-
-    await updateProject(params.id, title, description);
-    return NextResponse.redirect(new URL(`/projects/${params.id}`, req.url));
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
-*/
-
-// MODIFIÉ: Retrait de l'initialisation dupliquée du client
-/*
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // 🔐 ici
-);
-*/
-
-export async function PATCH(req: Request, context: { params: { id: string } }) {
-  const { id } = context.params;
+  const { id } = params;
   const { title, description } = await req.json();
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
@@ -97,13 +62,11 @@ export async function PATCH(req: Request, context: { params: { id: string } }) {
       { status: 403 }
     );
   }
-  // MODIFIÉ: Utilisation de la fonction action standardisée
-  // qui utilise le client admin
+
   try {
     await updateProject(id, title, description);
     return NextResponse.json({ message: "Projet mis à jour" });
-  } catch (error: unknown) { // MODIFIÉ: any -> unknown
-    // CORRECTION: Vérification du type de l'erreur
+  } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
