@@ -2,12 +2,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
+// MODIFIÉ: Ajout de 'isLoaded'
 import { useUser } from '@clerk/nextjs';
 import AnimatedContainer from '@/components/AnimatedContainer';
 
 export default function EditProjectPage() {
   const { id } = useParams();
-  const { user } = useUser();
+  // MODIFIÉ: Ajout de 'isLoaded' pour attendre la fin du chargement de Clerk
+  const { user, isLoaded } = useUser();
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -15,6 +17,7 @@ export default function EditProjectPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Fonction pour récupérer les données du projet
     const fetchProject = async () => {
       setLoading(true);
       try {
@@ -24,7 +27,6 @@ export default function EditProjectPage() {
         setDescription(data.description);
         if (!res.ok) throw new Error(data.error || 'Erreur inconnue');
       } catch (err: unknown) {
-        // CORRECTION: Vérification du type de l'erreur
         if (err instanceof Error) {
           setMessage(`Erreur lors du chargement du projet: ${err.message}`);
         } else {
@@ -34,13 +36,34 @@ export default function EditProjectPage() {
         setLoading(false);
       }
     };
-    fetchProject();
-  }, [id]);
+
+    // Attendre que Clerk ait chargé l'état de l'utilisateur
+    if (!isLoaded) {
+      // Afficher l'état de chargement principal pendant que Clerk vérifie
+      setLoading(true);
+      return;
+    }
+
+    // L'utilisateur est chargé, vérifier son rôle
+    const isAdmin = user?.publicMetadata?.role === "admin";
+
+    if (!isAdmin) {
+      // RECOMMANDATION (1.3) APPLIQUÉE: Redirection si non-admin
+      setMessage('❌ Accès refusé. Redirection...');
+      router.push('/dashboard');
+    } else {
+      // L'utilisateur est admin, charger les données du projet
+      fetchProject();
+    }
+
+  // MODIFIÉ: Ajout de isLoaded, user, et router aux dépendances
+  }, [id, isLoaded, user, router]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage('⏳ Mise à jour...');
 
+    // Vérification de sécurité redondante (défense en profondeur)
     const isAdmin = user?.publicMetadata?.role === "admin";
     if (!isAdmin) {
       setMessage('❌ Accès refusé : seuls les administrateurs peuvent modifier ce projet.');
@@ -75,7 +98,9 @@ export default function EditProjectPage() {
     }
   };
 
-  if (loading) return <p className="text-center">Chargement...</p>;
+  // N'affiche le chargement que si 'isLoaded' est faux (attente de Clerk)
+  // ou si 'loading' est vrai (attente de fetchProject)
+  if (!isLoaded || loading) return <p className="text-center mt-20">Chargement...</p>;
 
   return (
     <main className="min-h-screen bg-white px-6 py-20">
@@ -83,8 +108,8 @@ export default function EditProjectPage() {
         <h1 className="text-2xl font-bold drop-shadow">Modifier le projet</h1>
 
         {message && (
-          <p className="text-sm text-red-100 bg-red-600/50 px-4 py-2 mt-4 rounded">
-            {JSON.stringify(message)}
+          <p className={`text-sm px-4 py-2 mt-4 rounded ${message.startsWith('❌') ? 'text-red-100 bg-red-600/50' : 'text-green-100 bg-green-600/50'}`}>
+            {message}
           </p>
         )}
 

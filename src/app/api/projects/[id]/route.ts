@@ -2,12 +2,8 @@ import { NextResponse, NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { deleteProject } from "@/lib/actions";
 import { updateProject } from "@/lib/actions";
-// MODIFIÉ: Import du client admin pour GET
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-// MODIFIÉ: Retrait de l'import du client public
-// import { supabase } from "@/lib/supabaseClient";
-// MODIFIÉ: Retrait de l'initialisation dupliquée du client
-// import { createClient } from "@supabase/supabase-js";
+
 
 export async function GET(
   req: NextRequest,
@@ -92,7 +88,15 @@ const supabase = createClient(
 export async function PATCH(req: Request, context: { params: { id: string } }) {
   const { id } = context.params;
   const { title, description } = await req.json();
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.metadata?.role;
 
+  if (role !== "admin") {
+    return NextResponse.json(
+      { error: "Accès refusé (admin uniquement)" },
+      { status: 403 }
+    );
+  }
   // MODIFIÉ: Utilisation de la fonction action standardisée
   // qui utilise le client admin
   try {
