@@ -6,11 +6,10 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 // CORRECTION: Remplacement de NextRequest par Request standard
 export async function GET(
-  req: Request,
-  context: { params: { id: string } }
+  {params}: {params: Promise<{ id: string }>}
 ) {
   // CORRECTION: Retrait de 'await'
-  const { id } = context.params;
+  const { id } = await params;
 
   // MODIFIÉ: Utilisation du client admin pour la lecture
   const { data, error } = await supabaseAdmin
