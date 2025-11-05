@@ -13,7 +13,7 @@ export async function GET(
   req: NextRequest,
   context: { params: { id: string } }
 ) {
-  const { id } = await context.params;
+  const { id } =  context.params;
   // MODIFIÉ: Utilisation du client admin pour la lecture
   const { data, error } = await supabaseAdmin
     .from("Project")
