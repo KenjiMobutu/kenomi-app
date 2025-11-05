@@ -3,22 +3,13 @@ import { auth } from "@clerk/nextjs/server";
 import { deleteProject, updateProject } from "@/lib/actions";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-// SUPPRIMÉ: L'interface 'Props' n'est pas correcte pour les routes API.
-/*
-interface Props {
-  params: Promise<{ id: string }>;
-}
-*/
-
-// CORRECTION: La signature d'une route API est (req: Request, context: { params: ... })
 export async function GET(
-  req: Request, // Le premier argument est la requête (même s'il est inutilisé ici)
-  context: { params: { id: string } } // Le second argument contient les params
+  _req: Request,
+  { params }: { params: { id: string } }
 ) {
-  // CORRECTION: Les params sont dans 'context' et ne sont pas une promesse
-  const { id } = context.params;
+  
+  const { id } = params;
 
-  // MODIFIÉ: Utilisation du client admin pour la lecture
   const { data, error } = await supabaseAdmin
     .from("Project")
     .select("*")
@@ -35,13 +26,11 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-// CORRECTION: Signature mise à jour
 export async function DELETE(
-  _: Request, // req est inutilisé, donc renommé en _
-  context: { params: { id: string } }
+  _req: Request,
+  { params }: { params: { id: string } }
 ) {
-  // CORRECTION: Les params sont dans 'context'
-  const { id } = context.params;
+  const { id } = params;
 
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
@@ -53,22 +42,15 @@ export async function DELETE(
     );
   }
 
-  try {
-    await deleteProject(id);
-    return NextResponse.json({ message: "Projet supprimé" });
-  } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+  await deleteProject(id);
+  return NextResponse.json({ message: "Projet supprimé" });
 }
 
-// CORRECTION: Signature mise à jour
 export async function PATCH(
   req: Request,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  // CORRECTION: Les params sont dans 'context'
-  const { id } = context.params;
+  const { id } = params;
 
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
@@ -82,11 +64,6 @@ export async function PATCH(
 
   const { title, description } = await req.json();
 
-  try {
-    await updateProject(id, title, description);
-    return NextResponse.json({ message: "Projet mis à jour" });
-  } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+  await updateProject(id, title, description);
+  return NextResponse.json({ message: "Projet mis à jour" });
 }
