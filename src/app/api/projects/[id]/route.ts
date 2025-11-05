@@ -3,11 +3,16 @@ import { auth } from "@clerk/nextjs/server";
 import { deleteProject, updateProject } from "@/lib/actions";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+interface Params {
+  params: {
+    id: string
+  }
+}
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: Params
 ) {
-  
+
   const { id } = params;
 
   const { data, error } = await supabaseAdmin
@@ -23,7 +28,7 @@ export async function GET(
     );
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json({id});
 }
 
 export async function DELETE(
