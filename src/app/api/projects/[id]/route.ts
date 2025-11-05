@@ -1,24 +1,16 @@
+
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { deleteProject, updateProject } from "@/lib/actions";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-// SUPPRIMÉ: L'interface 'Props' et l'utilisation de 'Promise'
-// ne sont pas valides pour les gestionnaires de routes API.
-/*
-interface Props {
-  params: Promise<{ id: string }>;
-}
-*/
-
-// CORRECTION: La signature d'une route API est (req: Request, context: { params: ... })
-// Les 'params' ne sont PAS une promesse dans ce contexte.
+// In Next.js 15+, params is now a Promise that needs to be awaited
 export async function GET(
-  req: Request, // Le premier argument est la requête
-  context: { params: { id: string } } // Le second argument contient les params
+  req: Request,
+  context: { params: Promise<{ id: string }> }
 ) {
-  // CORRECTION: 'params' est lu depuis 'context' de manière synchrone.
-  const { id } = context.params;
+  // Await the params Promise
+  const { id } = await context.params;
 
   const { data, error } = await supabaseAdmin
     .from("Project")
@@ -36,13 +28,12 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-// CORRECTION: La signature doit correspondre: (req, context)
 export async function DELETE(
-  _: Request, // req est inutilisé, donc renommé en _
-  context: { params: { id: string } }
+  _: Request,
+  context: { params: Promise<{ id: string }> }
 ) {
-  // CORRECTION: 'params' est lu depuis 'context'
-  const { id } = context.params;
+  // Await the params Promise
+  const { id } = await context.params;
 
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
@@ -63,13 +54,12 @@ export async function DELETE(
   }
 }
 
-// CORRECTION: La signature doit correspondre: (req, context)
 export async function PATCH(
   req: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  // CORRECTION: 'params' est lu depuis 'context'
-  const { id } = context.params;
+  // Await the params Promise
+  const { id } = await context.params;
 
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
