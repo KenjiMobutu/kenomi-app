@@ -3,14 +3,22 @@ import { auth } from "@clerk/nextjs/server";
 import { deleteProject, updateProject } from "@/lib/actions";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-interface Params {
-  id: string;
+// SUPPRIMÉ: L'interface 'Props' n'est pas correcte pour les routes API.
+/*
+interface Props {
+  params: Promise<{ id: string }>;
 }
+*/
 
-export async function GET(req: Request, context: unknown) {
-  const { params } = context as { params: Params };
-  const { id } = params;
+// CORRECTION: La signature d'une route API est (req: Request, context: { params: ... })
+export async function GET(
+  req: Request, // Le premier argument est la requête (même s'il est inutilisé ici)
+  context: { params: { id: string } } // Le second argument contient les params
+) {
+  // CORRECTION: Les params sont dans 'context' et ne sont pas une promesse
+  const { id } = context.params;
 
+  // MODIFIÉ: Utilisation du client admin pour la lecture
   const { data, error } = await supabaseAdmin
     .from("Project")
     .select("*")
@@ -27,9 +35,13 @@ export async function GET(req: Request, context: unknown) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(req: Request, context: unknown) {
-  const { params } = context as { params: Params };
-  const { id } = params;
+// CORRECTION: Signature mise à jour
+export async function DELETE(
+  _: Request, // req est inutilisé, donc renommé en _
+  context: { params: { id: string } }
+) {
+  // CORRECTION: Les params sont dans 'context'
+  const { id } = context.params;
 
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
@@ -50,9 +62,13 @@ export async function DELETE(req: Request, context: unknown) {
   }
 }
 
-export async function PATCH(req: Request, context: unknown) {
-  const { params } = context as { params: Params };
-  const { id } = params;
+// CORRECTION: Signature mise à jour
+export async function PATCH(
+  req: Request,
+  context: { params: { id: string } }
+) {
+  // CORRECTION: Les params sont dans 'context'
+  const { id } = context.params;
 
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
