@@ -3,13 +3,13 @@ import { auth } from "@clerk/nextjs/server";
 import { deleteProject, updateProject } from "@/lib/actions";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-interface Props {
-  params: Promise<{ id: string }>;
+interface Params {
+  id: string;
 }
 
-export async function GET({ params }: Props) {
-
-  const { id } = await params;
+export async function GET(req: Request, context: unknown) {
+  const { params } = context as { params: Params };
+  const { id } = params;
 
   const { data, error } = await supabaseAdmin
     .from("Project")
@@ -27,9 +27,9 @@ export async function GET({ params }: Props) {
   return NextResponse.json(data);
 }
 
-export async function DELETE({ params }: Props) {
-
-  const { id } = await params;
+export async function DELETE(req: Request, context: unknown) {
+  const { params } = context as { params: Params };
+  const { id } = params;
 
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
@@ -50,9 +50,9 @@ export async function DELETE({ params }: Props) {
   }
 }
 
-export async function PATCH(req: Request, { params }: Props) {
-
-  const { id } = await params;
+export async function PATCH(req: Request, context: unknown) {
+  const { params } = context as { params: Params };
+  const { id } = params;
 
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
