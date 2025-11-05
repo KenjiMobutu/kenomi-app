@@ -4,12 +4,14 @@ import { deleteProject } from "@/lib/actions";
 import { updateProject } from "@/lib/actions";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-// CORRECTION: Remplacement de NextRequest par Request standard
+// CORRECTION: Rétablissement de la signature correcte pour une API Route
+// 1er argument: req (Request), 2ème argument: context (contenant params)
 export async function GET(
-  {params}: {params: Promise<{ id: string }>}
+  req: Request,
+  context: { params: { id: string } }
 ) {
-  // CORRECTION: Retrait de 'await'
-  const { id } = await params;
+  // CORRECTION: Les params sont dans 'context' et ne sont pas une promesse
+  const { id } = context.params;
 
   // MODIFIÉ: Utilisation du client admin pour la lecture
   const { data, error } = await supabaseAdmin
