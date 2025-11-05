@@ -1,5 +1,6 @@
 'use client';
 
+// MODIFIÉ: Ajout de useCallback
 import { useEffect, useState, useCallback } from 'react';
 
 interface Project {
@@ -21,6 +22,10 @@ export default function ProjectList() {
   const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+  // AJOUT: État pour la confirmation de suppression non bloquante
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // AJOUT: État pour le chargement de la suppression
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProjects();
@@ -38,41 +43,8 @@ export default function ProjectList() {
     };
   }, [search]);
 
-  useEffect(() => {
-    handleFilter();
-  // MODIFIÉ: Corrigé la dépendance de 'search' à 'debouncedSearch'
-  // Le filtrage ne s'exécute que lorsque la valeur décalée est mise à jour
-  }, [projects, debouncedSearch, startDate, endDate]);
-
-  const fetchProjects = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/projects/all');
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur inconnue');
-      setProjects(data);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    const confirm = window.confirm('Supprimer ce projet ?');
-    if (!confirm) return;
-
-    // TODO: Gérer l'état de chargement et les erreurs de suppression
-    const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-    if (res.ok) {
-      setProjects(projects.filter((p) => p.id !== id));
-    } else {
-      // Afficher une erreur à l'utilisateur
-      alert("La suppression a échoué.");
-    }
-  };
-
-  const handleFilter = () => {
+  // CORRECTION: handleFilter est maintenant encapsulé dans useCallback
+  const handleFilter = useCallback(() => {
     let result = [...projects];
 
     // Utilisation de debouncedSearch pour le filtrage
@@ -95,6 +67,68 @@ export default function ProjectList() {
 
     setFiltered(result);
     setCurrentPage(1);
+  }, [projects, debouncedSearch, startDate, endDate]); // Dépendances de useCallback
+
+  useEffect(() => {
+    handleFilter();
+  // MODIFIÉ: Ajout de handleFilter comme dépendance (stable grâce à useCallback)
+  }, [projects, debouncedSearch, startDate, endDate, handleFilter]);
+
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/projects/all');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur inconnue');
+      setProjects(data);
+    } catch (err: unknown) { // MODIFIÉ: any -> unknown
+      // CORRECTION: Vérification du type de l'erreur
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Erreur inconnue');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // MODIFIÉ: Remplacement de window.confirm/alert par une logique non bloquante
+  const handleDelete = async (id: string) => {
+    // Empêche de multiples clics pendant la suppression
+    if (isDeleting) return;
+
+    // Si ce n'est pas le projet en attente de confirmation, on l'active
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      // Réinitialise la confirmation après 3 secondes
+      setTimeout(() => {
+        // Vérifie si c'est toujours le même ID avant de réinitialiser
+        setConfirmDeleteId((currentId) => (currentId === id ? null : currentId));
+      }, 3000);
+      return;
+    }
+
+    // Si c'est le bon projet, on supprime
+    setIsDeleting(id); // Active le loader pour cet ID
+    setError(''); // Réinitialise les erreurs précédentes
+
+    try {
+      const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setProjects(projects.filter((p) => p.id !== id));
+      } else {
+        // Afficher une erreur non bloquante
+        const errorData = await res.json();
+        throw new Error(errorData.error || "La suppression a échoué.");
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
+      setError(`La suppression a échoué: ${errorMessage}`);
+    } finally {
+      setConfirmDeleteId(null); // Réinitialise l'état de confirmation
+      setIsDeleting(null); // Désactive le loader
+    }
   };
 
   const resetFilters = () => {
@@ -103,16 +137,28 @@ export default function ProjectList() {
     setEndDate('');
     // setFiltered(projects); // Ceci est géré par le useEffect
     setCurrentPage(1);
+    setError(''); // Réinitialise aussi les erreurs
   };
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  if (loading) return <p className="text-center text-black">Chargement...</p>;
-  if (error) return <p className="text-red-600 text-center">{error}</p>;
+  if (loading && projects.length === 0) return <p className="text-center text-black">Chargement...</p>;
 
   return (
     <div className="mt-10 max-w-6xl mx-auto space-y-6 text-black">
+
+      {/* AJOUT: AFFICHE L'ERREUR (remplace alert) */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+          <strong className="font-bold">Erreur : </strong>
+          <span className="block sm:inline">{error}</span>
+          <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError('')}>
+            <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 2.651a1.2 1.2 0 1 1-1.697-1.697L8.18 10 5.53 7.349a1.2 1.2 0 1 1 1.697-1.697L10 8.18l2.651-2.651a1.2 1.2 0 1 1 1.697 1.697L11.819 10l2.651 2.651a1.2 1.2 0 0 1 0 1.698z"/></svg>
+          </span>
+        </div>
+      )}
+
       {/* Zone de filtres */}
       <div className="bg-white border border-gray-300 p-6 rounded-xl shadow space-y-4">
         <h3 className="text-lg font-semibold">🔍 Filtrer les projets</h3>
@@ -175,21 +221,30 @@ export default function ProjectList() {
       {paginated.map((p) => (
         <tr
           key={p.id}
-          className="border-t hover:bg-gray-50 transition-colors cursor-pointer"
+          // MODIFIÉ: Ajout d'une classe d'opacité pendant la suppression
+          className={`border-t hover:bg-gray-50 transition-colors cursor-pointer ${isDeleting === p.id ? 'opacity-50' : ''}`}
           onClick={() => window.location.href = `/projects/${p.id}`}
         >
           <td className="px-5 py-3 font-medium text-black">{p.title}</td>
           <td className="px-5 py-3">{p.description}</td>
           <td className="px-5 py-3">{new Date(p.created_at).toLocaleDateString()}</td>
           <td className="px-5 py-3 text-right">
+            {/* MODIFIÉ: Bouton de suppression avec confirmation non bloquante */}
             <button
               onClick={(e) => {
                 e.stopPropagation(); // empêche le clic de suivre le lien
                 handleDelete(p.id);
               }}
-              className="text-red-600 hover:text-red-800 hover:underline"
+              className={`font-semibold ${
+                confirmDeleteId === p.id
+                  ? 'text-yellow-600 hover:text-yellow-800' // État de confirmation
+                  : 'text-red-600 hover:text-red-800' // État normal
+              } hover:underline disabled:opacity-50`}
+              // Désactive le flou pour que l'utilisateur puisse cliquer à nouveau
+              onBlur={() => confirmDeleteId === p.id && setConfirmDeleteId(null)}
+              disabled={isDeleting === p.id} // Désactive pendant la suppression
             >
-              Supprimer
+              {isDeleting === p.id ? '...' : (confirmDeleteId === p.id ? 'Confirmer ?' : 'Supprimer')}
             </button>
           </td>
         </tr>
@@ -216,7 +271,7 @@ export default function ProjectList() {
               className={`px-3 py-1 rounded border ${
                 page === currentPage
                   ? 'bg-blue-600 text-white font-bold'
-                  : 'bg-white text-black hover:bg-blue-100'
+                  : 'bg-white text-black hover:bg-blue-100' // CORRECTION: 'text-black' ajouté
               }`}
             >
               {page}
