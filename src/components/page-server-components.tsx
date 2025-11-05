@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { memo } from "react";
+import Link from 'next/link';
 
 // --- Data (Uniquement pour le Footer) ---
 const navLinks = [
@@ -126,9 +127,8 @@ export const Footer = memo(function Footer() {
             <h4 className="font-semibold text-white">Légal</h4>
             <ul className="mt-4 space-y-2 text-sm">
               <li>
-                <a href="#" className="hover:underline">
-                  Mentions légales
-                </a>
+                <Link href="/mentions_legales" className="hover:underline">
+                Mentions légales </Link>
               </li>
               <li>
                 <a href="#" className="hover:underline">
