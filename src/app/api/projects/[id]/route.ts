@@ -1,13 +1,17 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { deleteProject, updateProject } from "@/lib/actions";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+type RouteContext = {
+  params: {
+    id: string;
+  };
+};
+
+export async function GET(req: Request, context: RouteContext) {
+  const { id } = context.params;
+
   const { data, error } = await supabaseAdmin
     .from("Project")
     .select("*")
@@ -24,10 +28,8 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-export async function DELETE(
-  _: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: Request, context: RouteContext) {
+  const { id } = context.params;
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
 
@@ -39,7 +41,7 @@ export async function DELETE(
   }
 
   try {
-    await deleteProject(params.id);
+    await deleteProject(id);
     return NextResponse.json({ message: "Projet supprimé" });
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
@@ -47,11 +49,8 @@ export async function DELETE(
   }
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function PATCH(req: Request, context: RouteContext) {
+  const { id } = context.params;
   const { title, description } = await req.json();
   const { sessionClaims } = await auth();
   const role = sessionClaims?.metadata?.role;
