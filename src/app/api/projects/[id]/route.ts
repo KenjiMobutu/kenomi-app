@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { deleteProject, updateProject } from "@/lib/actions";
+import { deleteProject } from "@/lib/actions";
+import { updateProject } from "@/lib/actions";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
-
-export async function GET(req: Request, context: RouteContext) {
+// CORRECTION: Remplacement de NextRequest par Request standard
+export async function GET(
+  req: Request,
+  context: { params: { id: string } }
+) {
+  // CORRECTION: Retrait de 'await'
   const { id } = context.params;
 
+  // MODIFIÉ: Utilisation du client admin pour la lecture
   const { data, error } = await supabaseAdmin
     .from("Project")
     .select("*")
@@ -28,10 +29,15 @@ export async function GET(req: Request, context: RouteContext) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(req: Request, context: RouteContext) {
-  const { id } = context.params;
+export async function DELETE(
+  _: Request,
+  { params }: { params: { id: string } }
+) {
   const { sessionClaims } = await auth();
+  // CORRECTION: Accès via 'metadata' et non 'publicMetadata'
   const role = sessionClaims?.metadata?.role;
+
+  console.log("Rôle reçu (DELETE):", role);
 
   if (role !== "admin") {
     return NextResponse.json(
@@ -41,18 +47,21 @@ export async function DELETE(req: Request, context: RouteContext) {
   }
 
   try {
-    await deleteProject(id);
+    // Cette action utilise maintenant le client admin (via actions.ts)
+    await deleteProject(params.id);
     return NextResponse.json({ message: "Projet supprimé" });
   } catch (err: unknown) {
+    // CORRECTION: Vérification du type de l'erreur
     const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
-export async function PATCH(req: Request, context: RouteContext) {
-  const { id } = context.params;
-  const { title, description } = await req.json();
+
+export async function PATCH(req: Request, context: { params: { id: string } }) {
+  // AJOUT SÉCURITÉ: Vérification du rôle
   const { sessionClaims } = await auth();
+  // CORRECTION: Accès via 'metadata' et non 'publicMetadata'
   const role = sessionClaims?.metadata?.role;
 
   if (role !== "admin") {
@@ -61,11 +70,18 @@ export async function PATCH(req: Request, context: RouteContext) {
       { status: 403 }
     );
   }
+  // Fin de l'ajout sécurité
 
+  const { id } = context.params;
+  const { title, description } = await req.json();
+
+  // MODIFIÉ: Utilisation de la fonction action standardisée
+  // qui utilise le client admin
   try {
     await updateProject(id, title, description);
     return NextResponse.json({ message: "Projet mis à jour" });
-  } catch (error: unknown) {
+  } catch (error: unknown) { // MODIFIÉ: any -> unknown
+    // CORRECTION: Vérification du type de l'erreur
     const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
