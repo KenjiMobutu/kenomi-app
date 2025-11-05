@@ -35,8 +35,8 @@ export async function DELETE(
   _: Request,
   { params }: { params: { id: string } }
 ) {
-  const { sessionClaims } = auth();
-  const role = sessionClaims?.publicMetadata?.role;
+  const { sessionClaims } = await auth();
+  const role = sessionClaims?.metadata?.role;
 
   console.log("Rôle reçu (DELETE):", role);
 
@@ -51,8 +51,10 @@ export async function DELETE(
     // Cette action utilise maintenant le client admin (via actions.ts)
     await deleteProject(params.id);
     return NextResponse.json({ message: "Projet supprimé" });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    // CORRECTION: Vérification du type de l'erreur
+    const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
@@ -96,7 +98,9 @@ export async function PATCH(req: Request, context: { params: { id: string } }) {
   try {
     await updateProject(id, title, description);
     return NextResponse.json({ message: "Projet mis à jour" });
-  } catch (error: any) {
-     return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) { // MODIFIÉ: any -> unknown
+    // CORRECTION: Vérification du type de l'erreur
+    const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

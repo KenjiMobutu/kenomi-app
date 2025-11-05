@@ -1,15 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@clerk/nextjs';
 import { useParams } from 'next/navigation';
-import { checkRole } from '@/utils/roles';
 import { useUser } from '@clerk/nextjs';
 import AnimatedContainer from '@/components/AnimatedContainer';
 
 export default function EditProjectPage() {
   const { id } = useParams();
-  const { getToken } = useAuth();
   const { user } = useUser();
   const router = useRouter();
   const [title, setTitle] = useState('');
@@ -26,8 +23,13 @@ export default function EditProjectPage() {
         setTitle(data.title);
         setDescription(data.description);
         if (!res.ok) throw new Error(data.error || 'Erreur inconnue');
-      } catch (err: any) {
-        setMessage('Erreur lors du chargement du projet.');
+      } catch (err: unknown) {
+        // CORRECTION: Vérification du type de l'erreur
+        if (err instanceof Error) {
+          setMessage(`Erreur lors du chargement du projet: ${err.message}`);
+        } else {
+          setMessage('Erreur lors du chargement du projet.');
+        }
       } finally {
         setLoading(false);
       }
@@ -63,8 +65,13 @@ export default function EditProjectPage() {
         const err = await res.json();
         setMessage('❌ ' + err.error);
       }
-    } catch (err: any) {
-      setMessage(err.message || '❌ Erreur inconnue');
+    } catch (err: unknown) {
+      // CORRECTION: Vérification du type de l'erreur
+      if (err instanceof Error) {
+        setMessage(err.message || '❌ Erreur inconnue');
+      } else {
+        setMessage('❌ Erreur inconnue');
+      }
     }
   };
 

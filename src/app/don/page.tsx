@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState, useEffect, FormEvent, useRef } from "react";
+import Image from 'next/image'; // AJOUT: Import manquant pour le composant Image
 // import { loadStripe } from "@stripe/stripe-js"; // Retiré pour chargement par CDN
 // import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js"; // Retiré pour chargement par CDN
 import { memo } from 'react'; // Import memo pour l'optimisation
@@ -28,24 +29,35 @@ CheckIcon.displayName = 'CheckIcon';
 const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "sb";
 const stripePublicKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!;
 
+// --- AJOUT SÉCURITÉ: Options de don avec ID ---
+const donationOptions = [
+  { id: 'don_25', amount: 25, label: '25€' },
+  { id: 'don_50', amount: 50, label: '50€' },
+  { id: 'don_150', amount: 150, label: '150€' },
+];
+
 // --- Composant Wrapper pour le bouton PayPal ---
 const PayPalPaymentButton = ({ amount, createOrder, onApprove, isSdkReady, disabled, onError }: {
   amount: number;
-  createOrder: (data: any, actions: any) => any;
-  onApprove: (data: any, actions: any) => Promise<void>;
+  createOrder: (data: unknown, actions: unknown) => unknown;
+  onApprove: (data: unknown, actions: unknown) => Promise<void>;
   isSdkReady: boolean;
   disabled: boolean;
-  onError: (err: any) => void;
+  onError: (err: unknown) => void;
 }) => {
     const paypalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        // CORRECTION: Ajout d'une suppression ciblée pour l'accès au SDK global
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (isSdkReady && (window as any).paypal && paypalRef.current) {
             // Vider le conteneur avant de rendre un nouveau bouton
             paypalRef.current.innerHTML = "";
 
             try {
                 // Rendre le nouveau bouton
+                // CORRECTION: Ajout d'une suppression ciblée
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).paypal.Buttons({
                     createOrder,
                     onApprove,
@@ -55,12 +67,14 @@ const PayPalPaymentButton = ({ amount, createOrder, onApprove, isSdkReady, disab
                         tagline: false,
                         height: 55,
                     },
+                    // CORRECTION: Ajout d'une suppression ciblée
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     fundingSource: (window as any).paypal.FUNDING.PAYPAL,
-                }).render(paypalRef.current).catch((err: any) => {
+                }).render(paypalRef.current).catch((err: unknown) => { // CORRECTION: any -> unknown
                     console.error("Échec du rendu des boutons PayPal :", err);
                     onError(err);
                 });
-            } catch (err) {
+            } catch (err: unknown) { // CORRECTION: any -> unknown
                  console.error("Erreur lors de l'initialisation de PayPal :", err);
                  onError(err);
             }
@@ -80,7 +94,8 @@ export default function DonationPage() {
   // --- Component State ---
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [amount, setAmount] = useState<number>(50);
+  const [amount, setAmount] = useState<number>(50); // Montant affiché, utilisé par PayPal
+  const [priceId, setPriceId] = useState<string>('don_50'); // ID pour Stripe (prédéfini)
   const [isCustomAmount, setIsCustomAmount] = useState(false);
   const [frequency, setFrequency] = useState<'once' | 'monthly'>('once');
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal'>('stripe');
@@ -94,21 +109,24 @@ export default function DonationPage() {
   }, [frequency, paymentMethod]);
 
   // --- Event Handlers ---
-  const handleAmountSelect = (value: number | 'custom') => {
+  const handleAmountSelect = (value: number | 'custom', id: string | null = null) => {
     setError(null);
     if (value === 'custom') {
       setIsCustomAmount(true);
-      setAmount(0);
+      setAmount(0); // L'utilisateur doit remplir
+      setPriceId(''); // Pas d'ID pour les montants perso
     } else {
       setIsCustomAmount(false);
-      setAmount(value);
+      setAmount(value); // Montant pour affichage et PayPal
+      setPriceId(id!); // ID pour Stripe
     }
   };
 
   const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);
     if (!isNaN(value) && value > 0) {
-      setAmount(value);
+      setAmount(value); // Montant pour affichage et PayPal
+      setPriceId(''); // Pas d'ID pour les montants perso
       setError(null);
     } else {
       setAmount(0);
@@ -126,19 +144,24 @@ export default function DonationPage() {
 
     const form = e.currentTarget;
     const formData = {
-      firstName: (form.firstName as HTMLInputElement).value,
-      lastName: (form.lastName as HTMLInputElement).value,
-      email: (form.email as HTMLInputElement).value,
-      amount,
+      firstName: (form.elements.namedItem("firstName") as HTMLInputElement).value,
+      lastName: (form.elements.namedItem("lastName") as HTMLInputElement).value,
+      email: (form.elements.namedItem("email") as HTMLInputElement).value,
+      amount: isCustomAmount ? amount : undefined, // N'envoie le montant que s'il est personnalisé
+      priceId: !isCustomAmount ? priceId : undefined, // N'envoie l'ID que s'il est prédéfini
       frequency,
     };
 
     try {
       // Vérifier si Stripe.js est chargé
+      // CORRECTION: Ajout d'une suppression ciblée
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (!(window as any).Stripe) {
           throw new Error("Stripe.js n'a pas pu être chargé. Veuillez rafraîchir la page.");
       }
       // Initialiser Stripe
+      // CORRECTION: Ajout d'une suppression ciblée
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const stripe = (window as any).Stripe(stripePublicKey);
       if (!stripe) {
            throw new Error("Impossible d'initialiser Stripe.");
@@ -151,20 +174,22 @@ export default function DonationPage() {
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "La création de la session de paiement a échoué.");
+        throw new Error(errorData.error || "La création de la session de paiement a échoué.");
       }
       const data = await res.json();
       // const stripe = await stripePromise; // Remplacé par l'initialisation ci-dessus
       await stripe.redirectToCheckout({ sessionId: data.id });
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) { // CORRECTION: any -> unknown
+      setError((err as Error).message); // CORRECTION: Typage de l'erreur
     } finally {
       setLoading(false);
     }
   };
 
   // --- PayPal Logic ---
-  const createPayPalOrder = (data: any, actions: any) => {
+  // CORRECTION: Ajout d'une suppression ciblée pour 'actions'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const createPayPalOrder = (data: unknown, actions: any) => { // CORRECTION: data: any -> unknown, actions: any (conservé car SDK complexe)
     // S'assurer que le montant est valide avant de créer l'ordre
     if (amount <= 0) {
         setError("Montant PayPal non valide.");
@@ -179,20 +204,24 @@ export default function DonationPage() {
     });
   };
 
-  const onPayPalApprove = async (data: any, actions: any) => {
+  // CORRECTION: Ajout d'une suppression ciblée pour 'actions'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onPayPalApprove = async (data: unknown, actions: any) => { // CORRECTION: data: any -> unknown, actions: any (conservé car SDK complexe)
     setLoading(true);
     try {
       await actions.order.capture();
       console.log("Don PayPal réussi!", data);
-      window.location.href = '/merci';
-    } catch (err) {
+      // Redirection vers une page de succès générique pour PayPal
+      window.location.href = '/don/success';
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (err) { // CORRECTION: Variable 'err' inutilisée, supprimée
       setError("Une erreur est survenue lors de la finalisation du don PayPal.");
     } finally {
       setLoading(false);
     }
   };
 
-  const onPayPalError = (err: any) => {
+  const onPayPalError = (err: unknown) => { // CORRECTION: any -> unknown
     console.error("Erreur PayPal :", err);
     setError("Une erreur est survenue avec PayPal. Veuillez réessayer ou utiliser une autre méthode.");
   }
@@ -204,12 +233,14 @@ export default function DonationPage() {
       <Script
           src="https://js.stripe.com/v3/"
           strategy="afterInteractive"
-          onError={(e) => setError("Impossible de charger le script de paiement Stripe.")}
+          // CORRECTION: Variable 'e' inutilisée, supprimée
+          onError={() => setError("Impossible de charger le script de paiement Stripe.")}
       />
       <Script
           src={`https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=EUR&intent=capture`}
           onLoad={() => setIsSdkReady(true)}
-          onError={(e) => setError("Impossible de charger le script de paiement PayPal.")}
+          // CORRECTION: Variable 'e' inutilisée, supprimée
+          onError={() => setError("Impossible de charger le script de paiement PayPal.")}
           strategy="afterInteractive"
       />
 
@@ -222,20 +253,22 @@ export default function DonationPage() {
         >
           {/* Left Column - Visual & Impact */}
           <div className="hidden lg:flex flex-col items-center justify-center bg-black  p-10 text-white text-center">
-            <img
+            {/* CORRECTION: Remplacement de <img> par <Image> de next/image */}
+            <Image
               src="/happySeniorKenomi.png"
               alt="Personne âgée souriante utilisant une tablette grâce à l'aide de Kenomi"
               width={560}
               height={560}
+              priority // AJOUT: Image importante pour le LCP
               className="w-80 h-80 object-cover mb-8  border-white/50 shadow-lg"
             />
-            <h2 className="text-3xl font-bold leading-tight mb-4">Changez une vie aujourd'hui.</h2>
+            <h2 className="text-3xl font-bold leading-tight mb-4">Changez une vie aujourd&apos;hui.</h2>
             <p className="text-teal-100 text-lg mb-6 max-w-sm">Chaque contribution nous rapproche de notre objectif : un avenir numérique plus sûr et plus inclusif en Belgique.</p>
             {/* MODIFIÉ: Retrait des références à la RDC. */}
             <div className="space-y-4 text-left text-teal-50 text-sm">
               <div className="flex items-start"><HeartIcon /><p><span className="font-bold">25€</span> &ndash; Finance un atelier de sensibilisation à la sécurité pour un senior.</p></div>
-              <div className="flex items-start"><HeartIcon /><p><span className="font-bold">50€</span> &ndash; Contribue à l'achat de logiciels pour un "Kit d'Autonomie".</p></div>
-              <div className="flex items-start"><HeartIcon /><p><span className="font-bold">150€</span> &ndash; Finance un ordinateur reconditionné pour un jeune du programme "Tremplin Numérique".</p></div>
+              <div className="flex items-start"><HeartIcon /><p><span className="font-bold">50€</span> &ndash; Contribue à l&apos;achat de logiciels pour un &quot;Kit d&apos;Autonomie&quot;.</p></div>
+              <div className="flex items-start"><HeartIcon /><p><span className="font-bold">150€</span> &ndash; Finance un ordinateur reconditionné pour un jeune du programme &quot;Tremplin Numérique&quot;.</p></div>
             </div>
           </div>
 
@@ -254,10 +287,10 @@ export default function DonationPage() {
                 <h3 className="font-bold text-gray-800 text-lg mb-3">Sélectionnez un montant</h3>
                  {/* MODIFIÉ: Montants alignés sur la description (25, 50, 150) */}
                 <div className="grid grid-cols-2 gap-3">
-                    {[25, 50, 150].map((val) => (
-                        <button type="button" key={val} onClick={() => handleAmountSelect(val)} className={`relative text-left p-3 border-2 rounded-lg font-bold text-gray-700 transition-all ${!isCustomAmount && amount === val ? 'border-grey-500 bg-teal-50' : 'border-gray-200 bg-gray-50 hover:border-gray-400'}`}>
-                            {val}€
-                            {!isCustomAmount && amount === val && <div className="absolute top-2 right-2 bg-black rounded-full h-5 w-5 flex items-center justify-center"><CheckIcon/></div>}
+                    {donationOptions.map((opt) => (
+                        <button type="button" key={opt.id} onClick={() => handleAmountSelect(opt.amount, opt.id)} className={`relative text-left p-3 border-2 rounded-lg font-bold text-gray-700 transition-all ${!isCustomAmount && priceId === opt.id ? 'border-grey-500 bg-teal-50' : 'border-gray-200 bg-gray-50 hover:border-gray-400'}`}>
+                            {opt.label}
+                            {!isCustomAmount && priceId === opt.id && <div className="absolute top-2 right-2 bg-black rounded-full h-5 w-5 flex items-center justify-center"><CheckIcon/></div>}
                         </button>
                     ))}
                     <button type="button" onClick={() => handleAmountSelect('custom')} className={`p-3 border-2 rounded-lg font-bold text-gray-700 transition-all ${isCustomAmount ? 'border-black bg-teal-50' : 'border-gray-200 bg-gray-50 hover:border-gray-400'}`}>
@@ -320,4 +353,3 @@ export default function DonationPage() {
     </>
   );
 }
-

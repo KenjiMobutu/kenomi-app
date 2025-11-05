@@ -6,6 +6,12 @@ import { auth } from '@clerk/nextjs/server';
 
 
 export async function POST(req: Request) {
+  const { userId } = await auth(); // <-- CORRECTION: Ajout de 'await'
+
+  // VÉRIFICATION SÉCURITÉ: Seuls les utilisateurs connectés peuvent créer un projet.
+  if (!userId) {
+    return NextResponse.json({ error: 'Accès non autorisé' }, { status: 401 });
+  }
   const { title, description } = await req.json();
 
   if (!title || !description) {
@@ -15,8 +21,10 @@ export async function POST(req: Request) {
   try {
     const data = await addProject(title, description);
     return NextResponse.json({ message: 'Projet ajouté', data }, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) { // MODIFIÉ: any -> unknown
+    // CORRECTION: Vérification du type de l'erreur
+    const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 

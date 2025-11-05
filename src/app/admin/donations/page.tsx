@@ -19,7 +19,8 @@ import {
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  ScriptableContext
 } from 'chart.js';
 
 ChartJS.register(
@@ -37,11 +38,13 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// Interface profil utilisateur connecté
+// SUPPRIMÉ: Interface UserProfile redondante avec Clerk
+/*
 interface UserProfile {
   full_name: string;
   role: string;
 }
+*/
 
 interface Donation {
   id: string;
@@ -52,12 +55,14 @@ interface Donation {
   status: string;
   stripe_session_id: string;
   created_at: string;
+  frequency: 'once' | 'monthly' | null; // AJOUT: Pour suivre les dons récurrents
 }
 
 export default function AdminDonationsPage() {
   const defaultAvatar = "/favicon.svg";
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  // SUPPRIMÉ: États locaux redondants, gérés par useUser de Clerk
+  // const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  // const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +85,7 @@ export default function AdminDonationsPage() {
   // Pagination dynamique (infinite scroll)
   const [visibleCount, setVisibleCount] = useState(20);
   const loaderRef = useRef<HTMLDivElement | null>(null);
+
   // Infinite scroll observer
   useEffect(() => {
     const observer = new window.IntersectionObserver(
@@ -91,18 +97,21 @@ export default function AdminDonationsPage() {
       { threshold: 1 }
     );
 
-    if (loaderRef.current) {
-      observer.observe(loaderRef.current);
+    const currentLoader = loaderRef.current; // CORRECTION: Copie pour cleanup
+    if (currentLoader) {
+      observer.observe(currentLoader);
     }
 
     return () => {
-      if (loaderRef.current) {
-        observer.unobserve(loaderRef.current);
+      if (currentLoader) { // CORRECTION: Utilisation de la variable copiée
+        observer.unobserve(currentLoader);
       }
     };
-  }, []);
+  }, []); // Ce hook gère uniquement l'observer, pas de dépendances nécessaires
+
+  // Data fetching effect
   useEffect(() => {
-    console.log('User:', user);
+    console.log('Utilisateur Clerk:', user);
     async function fetchDonations() {
       const { data: donationsData, error } = await supabase.from('admin_donations').select('*');
       if (error) console.error('Erreur Supabase :', error);
@@ -110,35 +119,28 @@ export default function AdminDonationsPage() {
       setLoading(false);
     }
 
+    // SUPPRIMÉ: fetchUserProfile (remplacé par useUser)
+    /*
     async function fetchUserProfile() {
-      const {
-        data: { user }
-      } = await supabase.auth.getUser();
-
-      if (user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('full_name, role')
-          .eq('id', user.id)
-          .single();
-        if (profileData) setUserProfile(profileData);
-      }
+      // ... logique supabase.auth.getUser() ...
     }
+    */
 
     fetchDonations();
-    fetchUserProfile();
+    // fetchUserProfile(); // SUPPRIMÉ
+
     // Ajout simulation latence (pour stats/cartes/graphes)
     setTimeout(() => {
       setIsLoadingStats(false);
     }, 1000);
-  }, []);
+  }, [user]); // CORRECTION: Dépendance à 'user' de Clerk
 
   const filteredDonations = useMemo(() => {
-    let filtered = donations
+    const filtered = donations // CORRECTION: let -> const
       .filter((don) => {
         const matchesSearch =
-          don.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-          don.email.toLowerCase().includes(debouncedSearch.toLowerCase());
+          (don.name && don.name.toLowerCase().includes(debouncedSearch.toLowerCase())) ||
+          (don.email && don.email.toLowerCase().includes(debouncedSearch.toLowerCase()));
 
         const date = new Date(don.created_at);
         const matchesMonth =
@@ -159,6 +161,11 @@ export default function AdminDonationsPage() {
       filtered.sort((a, b) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
+
+        // Gestion des valeurs nulles ou undefined
+        if (aValue == null) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (bValue == null) return sortConfig.direction === 'asc' ? 1 : -1;
+
         if (typeof aValue === 'string') {
           return sortConfig.direction === 'asc'
             ? (aValue as string).localeCompare(bValue as string)
@@ -197,7 +204,7 @@ export default function AdminDonationsPage() {
       datasets: [{
         label: '€ Collectés',
         data: sorted.map(([, value]) => value),
-        backgroundColor: function(ctx) {
+        backgroundColor: function(ctx: ScriptableContext<"bar">) { // CORRECTION: Typage
           const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
           gradient.addColorStop(0, 'rgba(236,72,153,0.6)');
           gradient.addColorStop(1, 'rgba(59,130,246,0.1)');
@@ -222,12 +229,14 @@ export default function AdminDonationsPage() {
       datasets: [{
         label: 'Nombre de dons',
         data: sorted.map(([, value]) => value),
-        backgroundColor: function(ctx) {
+        backgroundColor: function(ctx: ScriptableContext<"line">) { // CORRECTION: Typage
           const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
           gradient.addColorStop(0, 'rgba(236,72,153,0.6)');
           gradient.addColorStop(1, 'rgba(59,130,246,0.1)');
           return gradient;
-        }
+        },
+        borderColor: 'rgba(236,72,153,0.8)', // AJOUT
+        tension: 0.1 // AJOUT
       }]
     };
   }, [filteredDonations]);
@@ -236,6 +245,7 @@ export default function AdminDonationsPage() {
     const donorMap = new Map<string, { name: string, email: string, total: number }>();
     donations.forEach(d => {
       const key = d.email;
+      if (!key) return; // Ignorer les dons sans email
       if (!donorMap.has(key)) {
         donorMap.set(key, { name: d.name, email: d.email, total: 0 });
       }
@@ -245,45 +255,48 @@ export default function AdminDonationsPage() {
   }, [donations]);
 
   function exportCSV() {
-    const headers = ['Nom', 'Email', 'Montant', 'Devise', 'Statut', 'Date'];
+    const headers = ['Nom', 'Email', 'Montant', 'Devise', 'Statut', 'Date', 'Fréquence'];
     const rows = donations.map((d) => [
       d.name,
       d.email,
       d.amount,
       d.currency,
       d.status,
-      d.created_at
+      new Date(d.created_at).toLocaleString('fr-FR'),
+      d.frequency || 'once'
     ]);
     const csv = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'donations.csv');
+    link.setAttribute('download', 'donations_kenomi.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    alert('✅ Export CSV terminé avec succès');
+    // Remplacé 'alert' par 'console.log' pour une meilleure expérience
+    console.log('✅ Export CSV terminé avec succès');
   }
 
   function exportPDF() {
     const doc = new jsPDF();
     doc.setFontSize(18);
-    doc.text('Liste des dons', 14, 22);
+    doc.text('Liste des dons - Kenomi', 14, 22);
     autoTable(doc, {
-      head: [['Nom', 'Email', 'Montant', 'Devise', 'Statut', 'Date']],
+      head: [['Nom', 'Email', 'Montant', 'Devise', 'Statut', 'Date', 'Fréquence']],
       body: donations.map(d => [
         d.name,
         d.email,
         `€ ${d.amount.toFixed(2)}`,
         d.currency.toUpperCase(),
         d.status,
-        new Date(d.created_at).toLocaleString('fr-FR')
+        new Date(d.created_at).toLocaleString('fr-FR'),
+        d.frequency === 'monthly' ? 'Mensuel' : 'Unique'
       ]),
       startY: 30,
       styles: { fontSize: 10 },
       headStyles: { fillColor: [236, 72, 153] }
     });
-    doc.save('donations.pdf');
+    doc.save('donations_kenomi.pdf');
   }
 
   return (
@@ -317,11 +330,11 @@ export default function AdminDonationsPage() {
               {user?.username || 'Admin Kenomi'}
             </span>
             <span className="text-xs text-gray-400">
-              { user?.publicMetadata?.role || 'Super Admin'}
+              {typeof user?.publicMetadata?.role === 'string' ? user?.publicMetadata?.role : 'Super Admin'}
             </span>
           </div>
           <Image
-            src={avatarUrl || defaultAvatar}
+            src={user?.imageUrl || defaultAvatar} // CORRECTION: Utilisation de l'avatar Clerk
             alt="Admin"
             width={40}
             height={40}
@@ -387,7 +400,7 @@ export default function AdminDonationsPage() {
             >
               <option value="all">Toutes les devises</option>
               {[...new Set(donations.map(d => d.currency))].map(curr => (
-                <option key={curr} value={curr}>{curr.toUpperCase()}</option>
+                <option key={curr} value={curr}>{curr ? curr.toUpperCase() : 'N/A'}</option>
               ))}
             </select>
             <input
@@ -553,7 +566,7 @@ export default function AdminDonationsPage() {
                 className={`${darkMode
                   ? 'bg-[url("/cardbg2.jpg")]  bg-black/85  bg-blend-overlay backdrop-blur-sm border border-gray-800'
                   : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out`}
-                initial={{ opacity: 2, y: 60 }}
+                initial={{ opacity: 0, y: 60 }} // Corrigé 'opacity: 2' en 'opacity: 0'
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
@@ -564,7 +577,8 @@ export default function AdminDonationsPage() {
                   {topDonors.map((donor, index) => (
                     <li key={index} className={`flex justify-between border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'} pb-1`}>
                       <div className="flex items-center gap-2">
-                        <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${donor.name}`} className="w-6 h-6 rounded-full transition-all duration-300 ease-in-out" alt={donor.name} />
+                        {/* CORRECTION: <img> -> <Image> */}
+                        <Image src={`https://api.dicebear.com/7.x/initials/svg?seed=${donor.name}`} className="w-6 h-6 rounded-full transition-all duration-300 ease-in-out" alt={donor.name} width={24} height={24} />
                         <span>{donor.name}</span>
                       </div>
                       <span className="font-semibold text-lime-400">€ {donor.total.toFixed(2)}</span>
@@ -624,6 +638,18 @@ export default function AdminDonationsPage() {
                     </th>
                     <th className="py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[80px]">Devise</th>
                     <th className="py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[100px]">Statut</th>
+                    {/* AJOUT: Colonne Fréquence */}
+                    <th
+                      onClick={() =>
+                        setSortConfig(prev => ({
+                          key: 'frequency',
+                          direction: prev?.key === 'frequency' && prev.direction === 'asc' ? 'desc' : 'asc'
+                        }))
+                      }
+                      className="cursor-pointer hover:underline py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[100px]"
+                    >
+                      Fréquence {sortConfig?.key === 'frequency' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
                     <th
                       onClick={() =>
                         setSortConfig(prev => ({
@@ -649,10 +675,10 @@ export default function AdminDonationsPage() {
                       <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[120px]">{don.name}</td>
                       <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[180px]">{don.email}</td>
                       <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[100px]">€ {don.amount.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[80px]">{don.currency.toUpperCase()}</td>
+                      <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[80px]">{don.currency ? don.currency.toUpperCase() : 'N/A'}</td>
                       <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[100px]">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium
-                          ${don.status === 'succeeded'
+                          ${don.status === 'succeeded' || don.status === 'paid' // 'paid' pour les factures
                             ? 'bg-lime-100 text-lime-800'
                             : don.status === 'pending'
                             ? 'bg-yellow-100 text-yellow-800'
@@ -661,29 +687,46 @@ export default function AdminDonationsPage() {
                           {don.status}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[140px]">{don.created_at}</td>
+                      {/* AJOUT: Affichage Fréquence */}
+                      <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[100px]">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium
+                          ${don.frequency === 'monthly'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-gray-100 text-gray-800'}
+                        `}>
+                          {don.frequency === 'monthly' ? 'Mensuel' : 'Unique'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[140px]">{new Date(don.created_at).toLocaleString('fr-FR')}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {visibleCount < filteredDonations.length && (
                 <tr>
-                  <td colSpan={6} className="text-center py-4">
+                  <td colSpan={7} className="text-center py-4"> {/* CORRECTION: colSpan 6 -> 7 */}
                     <div ref={loaderRef} className="text-sm text-gray-500">Chargement en cours...</div>
                   </td>
                 </tr>
               )}
               {selectedDonation && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                  <div className="bg-white rounded-xl p-6 w-[90%] max-w-lg shadow-xl">
+                <div
+                  className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+                  onClick={() => setSelectedDonation(null)} // AJOUT: Fermeture au clic sur l'arrière-plan
+                >
+                  <div
+                    className={`rounded-xl p-6 w-[90%] max-w-lg shadow-xl ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
+                    onClick={(e) => e.stopPropagation()} // Empêche la fermeture au clic sur la modale
+                  >
                     <h3 className="text-lg font-bold mb-2">Détail du don</h3>
                     <p><strong>Nom :</strong> {selectedDonation.name}</p>
                     <p><strong>Email :</strong> {selectedDonation.email}</p>
                     <p><strong>Montant :</strong> € {selectedDonation.amount}</p>
+                    <p><strong>Fréquence :</strong> {selectedDonation.frequency === 'monthly' ? 'Mensuel' : 'Unique'}</p>
                     <p><strong>Devise :</strong> {selectedDonation.currency}</p>
                     <p><strong>Statut :</strong> {selectedDonation.status}</p>
-                    <p><strong>Date :</strong> {selectedDonation.created_at}</p>
-                    <p><strong>Session ID :</strong> {selectedDonation.stripe_session_id}</p>
+                    <p><strong>Date :</strong> {new Date(selectedDonation.created_at).toLocaleString('fr-FR')}</p>
+                    <p><strong>ID Transaction :</strong> {selectedDonation.stripe_session_id}</p>
                     <button
                       onClick={() => setSelectedDonation(null)}
                       className="mt-4 bg-fuchsia-500 text-white px-4 py-2 rounded hover:bg-fuchsia-600"

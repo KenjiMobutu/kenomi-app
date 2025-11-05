@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useAnimation, useInView, AnimatePresence, animate } from "framer-motion";
+// CORRECTION: 'useAnimation' inutilisé, 'Variants' ajouté
+import { motion, useInView, AnimatePresence, animate, Variants } from "framer-motion";
 // AJOUT: Import de 'memo' pour la refactorisation
 import { useEffect, useState, useRef, ReactNode, memo } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
-// AJOUT: Icônes pour les nouvelles cartes de formation
-import { Briefcase, School, ShieldCheck, Users2, Heart, ArrowUp, Menu, X , Package, Handshake, Users, Smile } from 'lucide-react';
+// CORRECTION: Icônes 'School' et 'ShieldCheck' inutilisées
+import { Briefcase, Users2, Heart, ArrowUp, Menu, X , Package, Handshake, Users, Smile } from 'lucide-react';
 
 // --- Types ---
 // AJOUT: Type pour les données de formation
@@ -66,12 +67,12 @@ const trainingData: Training[] = [
         {/* MODIFIÉ: "entreprise" -> "PME" */}
         <p>Ce programme complet (10-12h) couvre tous les aspects essentiels de la sécurité numérique en PME, du phishing à la protection des données (RGPD).</p>
         <ul className="list-disc list-inside space-y-2 pl-4">
-          <li><strong>Module 1 :</strong> Introduction & Enjeux (Coûts d'une attaque, risques légaux).</li>
+          <li><strong>Module 1 :</strong> Introduction & Enjeux (Coûts d&apos;une attaque, risques légaux).</li>
           <li><strong>Module 2 :</strong> Identification des Menaces (Phishing, Ransomwares, Ingénierie Sociale).</li>
           <li><strong>Module 3 :</strong> Hygiène Numérique (Mots de passe, 2FA, Mises à jour).</li>
           <li><strong>Module 4 :</strong> Sécurité en Télétravail (VPN, Wi-Fi, fuites de données).</li>
-          <li><strong>Module 5 :</strong> Ateliers Pratiques & Simulation d'attaque.</li>
-          <li><strong>Module 6 :</strong> Le cadre légal (RGPD) et la gestion d'incident.</li>
+          <li><strong>Module 5 :</strong> Ateliers Pratiques & Simulation d&apos;attaque.</li>
+          <li><strong>Module 6 :</strong> Le cadre légal (RGPD) et la gestion d&apos;incident.</li>
         </ul>
         <p className="mt-4 font-semibold">Inclus : Support de cours, fiches réflexes, et certificat de réussite.</p>
       </div>
@@ -91,8 +92,8 @@ const trainingData: Training[] = [
         <p>Ce programme est conçu sans jargon, axé sur la pratique et les situations réelles que les seniors rencontrent au quotidien.</p>
         <ul className="list-disc list-inside space-y-2 pl-4">
           <li><strong>Atelier 1 :</strong> Démystifier Internet & Gérer ses Emails (Reconnaître un spam).</li>
-          <li><strong>Atelier 2 :</strong> Le Détecteur d'Arnaques (Faux sites bancaires, fausses alertes virus, arnaques WhatsApp).</li>
-          <li><strong>Atelier 3 :</strong> Le Coffre-Fort des Mots de Passe (Créer et retenir une "phrase de passe" ultra-sécurisée).</li>
+          <li><strong>Atelier 2 :</strong> Le Détecteur d&apos;Arnaques (Faux sites bancaires, fausses alertes virus, arnaques WhatsApp).</li>
+          <li><strong>Atelier 3 :</strong> Le Coffre-Fort des Mots de Passe (Créer et retenir une &quot;phrase de passe&quot; ultra-sécurisée).</li>
           <li><strong>Atelier 4 :</strong> Partager en Sécurité (Réseaux sociaux, photos de famille, achats en ligne).</li>
         </ul>
         <p className="mt-4 font-semibold">Inclus : Guide papier récapitulatif, support téléphonique post-formation (1 mois).</p>
@@ -110,15 +111,15 @@ const trainingData: Training[] = [
       // MODIFIÉ: Alignement justifié
       <div className="space-y-4 text-gray-700 text-justify">
         <p className="font-semibold text-lg">Objectif : Transformer les enfants en citoyens numériques responsables et avertis par le jeu.</p>
-        <p>Ce camp d'entraînement utilise un univers "d'agents secrets" pour enseigner les concepts clés de la sécurité et de l'empathie en ligne.</p>
+        <p>Ce camp d&apos;entraînement utilise un univers &quot;d&apos;agents secrets&quot; pour enseigner les concepts clés de la sécurité et de l&apos;empathie en ligne.</p>
         <ul className="list-disc list-inside space-y-2 pl-4">
-          <li><strong>Mission 1 :</strong> Identifier les "Méchants du Web" (Phishing, fausses pubs).</li>
+          <li><strong>Mission 1 :</strong> Identifier les &quot;Méchants du Web&quot; (Phishing, fausses pubs).</li>
           <li><strong>Mission 2 :</strong> Le Tri des Secrets (Jeu sur les données publiques vs. privées).</li>
-          <li><strong>Mission 3 :</strong> Le Gardien du Trésor (Créer une "phrase de passe" magique).</li>
+          <li><strong>Mission 3 :</strong> Le Gardien du Trésor (Créer une &quot;phrase de passe&quot; magique).</li>
           <li><strong>Mission 4 :</strong> Le Mur des Choix (Jeu de simulation sur le cyber-harcèlement et les rumeurs).</li>
-          <li><strong>Mission 5 :</strong> L'Atelier du Super Post (Apprendre à réfléchir avant de publier).</li>
+          <li><strong>Mission 5 :</strong> L&apos;Atelier du Super Post (Apprendre à réfléchir avant de publier).</li>
         </ul>
-        <p className="mt-4 font-semibold">Inclus : Diplôme officiel "d'Agent Secret d'Internet" et un guide pour les parents.</p>
+        <p className="mt-4 font-semibold">Inclus : Diplôme officiel &quot;d&apos;Agent Secret d&apos;Internet&quot; et un guide pour les parents.</p>
       </div>
     )
   }
@@ -181,7 +182,8 @@ export default function Home() {
 }
 
 // --- Animation Variants ---
-const sectionVariants = {
+// CORRECTION: Ajout du type 'Variants' pour résoudre l'erreur TS2322
+const sectionVariants: Variants = {
     hidden: { opacity: 0, y: 50 },
     visible: {
         opacity: 1,
@@ -305,7 +307,7 @@ const Hero = memo(function Hero() {
             <p className="text-xl text-black text-justify mb-8">
               Kenomi renforce le tissu social et économique en Belgique.
               Nous sensibilisons à la cybersécurité et réinvestissons nos bénéfices
-              pour l&apos;autonomie des jeunes.
+              pour l&apos;autonomie des jeunes. {/* CORRECTION: ' -> &apos; */}
             </p>
             {/* MODIFIÉ: Centré sur mobile */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
@@ -374,7 +376,7 @@ const About = memo(function About() {
                             <h4 className="text-lg text-center  font-semibold leading-7 text-gray-800">1. Volet Commercial 💼</h4>
                             {/* MODIFIÉ: Alignement justifié */}
                             <p className="mt-2 text-base leading-7 text-gray-600 text-justify">
-                                C'est notre moteur économique.
+                                C&apos;est notre moteur économique. {/* CORRECTION: ' -> &apos; */}
                                 Nous proposons des formations de pointe en <strong> sensibilisation à la cybersécurité et hygiène numérique </strong>
                                 {/* MODIFIÉ: "Entreprises" -> "PME" */}
                                 aux particuliers, PME, ASBL et organismes publics.
@@ -385,8 +387,8 @@ const About = memo(function About() {
                             <h4 className="text-lg text-center font-semibold leading-7 text-gray-800">2. Volet Social ❤️</h4>
                             {/* MODIFIÉ: Alignement justifié */}
                             <p className="mt-2 text-base leading-7 text-gray-600 text-justify">
-                                Notre raison d'être. Les bénéfices sont réinvestis dans notre programme <strong>
-                                "Tremplin Numérique"</strong> qui offre des "Kits d'Autonomie"
+                                Notre raison d&apos;être. Les bénéfices sont réinvestis dans notre programme <strong> {/* CORRECTION: ' -> &apos; */}
+                                &quot;Tremplin Numérique&quot;</strong> qui offre des &quot;Kits d&apos;Autonomie&quot; {/* CORRECTION: " -> &quot; et ' -> &apos; */}
                                 (ordinateur, logiciels, formation) à des jeunes en situation de précarité,
                                 via nos partenaires sociaux. Parce que nous croyons que le numérique doit être une opportunité pour tous.
                             </p>
@@ -395,7 +397,7 @@ const About = memo(function About() {
                     <div className="mt-10 pt-6 border-t border-gray-200 text-center">
                         {/* MODIFIÉ: Alignement centré */}
                         <p className="text-base font-semibold text-gray-700 text-center">
-                           En choisissant Kenomi, vous n'augmentez pas seulement vos compétences ;
+                           En choisissant Kenomi, vous n&apos;augmentez pas seulement vos compétences ; {/* CORRECTION: ' -> &apos; */}
                            vous réalisez un investissement social direct et visible sur votre propre territoire.
                         </p>
                     </div>
@@ -426,12 +428,12 @@ const DonationImpact = memo(function DonationImpact() {
                         <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
                             <p className="text-4xl font-extrabold text-blue-700">50 €</p>
                             {/* MODIFIÉ: Alignement centré */}
-                            <p className="mt-2 text-black font-semibold text-center">Contribue à l'achat d'une licence logicielle pour un kit d'autonomie.</p>
+                            <p className="mt-2 text-black font-semibold text-center">Contribue à l&apos;achat d&apos;une licence logicielle pour un kit d&apos;autonomie.</p> {/* CORRECTION: ' -> &apos; */}
                         </div>
                         <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200 sm:col-span-2 lg:col-span-1">
                             <p className="text-4xl font-extrabold text-blue-700">150 €</p>
                             {/* MODIFIÉ: Alignement centré */}
-                            <p className="mt-2 text-black font-semibold text-center">Finance un "Kit d'Autonomie Numérique" complet pour un jeune.</p>
+                            <p className="mt-2 text-black font-semibold text-center">Finance un &quot;Kit d&apos;Autonomie Numérique&quot; complet pour un jeune.</p> {/* CORRECTION: " -> &quot; et ' -> &apos; */}
                         </div>
                     </div>
                     <a href="/don" className="mt-12 inline-block bg-yellow-400 text-blue-900 px-10 py-4 rounded-full font-bold text-xl hover:bg-yellow-300 transition-transform transform hover:scale-105">
@@ -460,7 +462,7 @@ const ActionPoles = memo(function ActionPoles() {
         >
             <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-16">
-                    <h2 className="text-xl font-semibold leading-7  text-indigo-600">Nos Pôles d'Action</h2>
+                    <h2 className="text-xl font-semibold leading-7  text-indigo-600">Nos Pôles d&apos;Action</h2> {/* CORRECTION: ' -> &apos; */}
                     <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
                         Des solutions concrètes pour un impact local
                     </p>
@@ -731,7 +733,7 @@ function Testimonial({ name, text }: { name: string; text: string }) {
     return (
         <div className="flex flex-col items-center justify-center h-full">
             {/* MODIFIÉ: Alignement centré */}
-            <p className="text-gray-700 italic text-lg max-w-2xl text-center">&quot;{text}&quot;</p>
+            <p className="text-gray-700 italic text-lg max-w-2xl text-center">&quot;{text}&quot;</p> {/* CORRECTION: " -> &quot; */}
             <p className="mt-4 text-sm text-gray-600 font-semibold">{name}</p>
         </div>
     );
@@ -749,13 +751,13 @@ const TransparentSection = memo(function TransparentSection() {
                     <div className="bg-white p-8 rounded-lg shadow-md">
                         <h3 className="text-2xl font-bold text-blue-700 mb-4">Qui Sommes-Nous ?</h3>
                         {/* MODIFIÉ: Alignement justifié */}
-                        <p className="text-gray-700 mb-4 text-justify">Kenomi est une ASBL fondée par des passionnés de technologie et d'impact social, convaincus que le numérique doit être une opportunité pour tous en Belgique. Nous sommes animés par des valeurs de partage, d'intégrité et de solidarité locale.</p>
-                        <a href="#" className="text-blue-600 font-bold hover:underline">Découvrir l'équipe →</a>
+                        <p className="text-gray-700 mb-4 text-justify">Kenomi est une ASBL fondée par des passionnés de technologie et d&apos;impact social, convaincus que le numérique doit être une opportunité pour tous en Belgique. Nous sommes animés par des valeurs de partage, d&apos;intégrité et de solidarité locale.</p> {/* CORRECTION: ' -> &apos; */}
+                        <a href="#" className="text-blue-600 font-bold hover:underline">Découvrir l&apos;équipe →</a> {/* CORRECTION: ' -> &apos; */}
                     </div>
                     <div className="bg-white p-8 rounded-lg shadow-md">
                         <h3 className="text-2xl font-bold text-blue-700 mb-4">Nos Rapports</h3>
                         {/* MODIFIÉ: Alignement justifié */}
-                        <p className="text-gray-700 mb-4 text-justify">Chaque année, nous publions un rapport d'activité détaillé. Vous y trouverez nos chiffres clés, nos succès, nos défis et un aperçu financier complet de notre impact en Belgique. Votre confiance est notre priorité.</p>
+                        <p className="text-gray-700 mb-4 text-justify">Chaque année, nous publions un rapport d&apos;activité détaillé. Vous y trouverez nos chiffres clés, nos succès, nos défis et un aperçu financier complet de notre impact en Belgique. Votre confiance est notre priorité.</p> {/* CORRECTION: ' -> &apos; */}
                         <a href="#" className="text-blue-600 font-bold hover:underline">Consulter le rapport 2024 →</a>
                     </div>
                 </div>
@@ -774,7 +776,7 @@ const Newsletter = memo(function Newsletter() {
                 <p className="mt-2 text-gray-600 text-center">Recevez les dernières nouvelles de nos projets en Belgique.</p>
                 <form className="mt-6 flex flex-col sm:flex-row gap-3 w-full">
                     <input type="email" placeholder="Votre adresse e-mail" className="flex-grow px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none w-full" />
-                    <motion.button whileHover={{ scale: 1.05 }} type="submit" className="px-6 py-3 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm hover:bg-indigo-700">S'abonner</motion.button>
+                    <motion.button whileHover={{ scale: 1.05 }} type="submit" className="px-6 py-3 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm hover:bg-indigo-700">S&apos;abonner</motion.button> {/* CORRECTION: ' -> &apos; */}
                 </form>
             </div>
         </motion.section>
@@ -859,4 +861,3 @@ function StickyButtons() {
         </div>
     );
 }
-
