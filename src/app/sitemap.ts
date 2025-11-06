@@ -44,6 +44,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'yearly',
       priority: 0.3,
     },
-    // Ajoutez ici vos pages de projets dynamiques si nécessaire
+    // TODO: Ajoutez ici vos pages de projets dynamiques si nécessaire
+    // Exemple :
+    // const projects = await fetchAllProjects(); // Logique de fetch
+    // const projectUrls = projects.map(project => ({
+    //   url: `${baseUrl}/projects/${project.id}`,
+    //   lastModified: new Date(project.updated_at),
+    //   changeFrequency: 'monthly',
+    //   priority: 0.6,
+    // }));
+    // return [...staticUrls, ...projectUrls];
   ]
 }

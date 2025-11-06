@@ -656,7 +656,7 @@ function Testimonial({ name, text }: { name: string; text: string }) {
     );
 }
 
-// --- MODIFICATION COMPOSANT NEWSLETTER ---
+// --- DÉBUT DE LA MODIFICATION NEWSLETTER ---
 
 export const Newsletter = memo(function Newsletter() {
     // États pour gérer le formulaire
@@ -664,10 +664,13 @@ export const Newsletter = memo(function Newsletter() {
     const [consent, setConsent] = useState(false);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(''); // Pour les retours de succès ou d'erreur
-    const [error, setError] = useState(false);
+    const [error, setError] = useState(false); // Pour déterminer la couleur du message
 
+    /**
+     * Gère la soumission du formulaire d'inscription.
+     */
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+        e.preventDefault(); // Empêche le rechargement de la page
 
         // Validation côté client
         if (!consent) {
@@ -686,6 +689,7 @@ export const Newsletter = memo(function Newsletter() {
         setMessage('');
 
         try {
+            // Appel à notre nouvelle route API
             const res = await fetch('/api/newsletter', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -783,7 +787,7 @@ export const Newsletter = memo(function Newsletter() {
         </motion.section>
     );
 });
-// --- FIN MODIFICATION NEWSLETTER ---
+// --- FIN DE LA MODIFICATION NEWSLETTER ---
 
 export function StickyButtons() {
     const [isVisible, setIsVisible] = useState(false);
