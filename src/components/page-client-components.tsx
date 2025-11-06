@@ -730,7 +730,7 @@ export const Newsletter = memo(function Newsletter() {
                         <input
                             type="email"
                             placeholder="Votre adresse e-mail"
-                            className="flex-grow px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none w-full"
+                            className="flex-grow text-black px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none w-full"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             disabled={loading}
