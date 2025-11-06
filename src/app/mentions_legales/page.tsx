@@ -30,7 +30,7 @@ export default function MentionsLegalesPage() {
             alt="Kenomi Logo"
             width={180}
             height={30}
-            style={{ display: "block", height: "30px", width: "180px" }}
+            priority
           />
         </Link>
         {/* CORRECTION: <a> -> <Link> */}

@@ -1,5 +1,5 @@
 'use client';
-
+import Link from 'next/link';
 import { motion } from "framer-motion";
 import { useState, useEffect, FormEvent, useRef } from "react";
 import Image from 'next/image'; // AJOUT: Import manquant pour le composant Image
@@ -164,7 +164,7 @@ export default function DonationPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const stripe = (window as any).Stripe(stripePublicKey);
       if (!stripe) {
-           throw new Error("Impossible d'initialiser Stripe.");
+          throw new Error("Impossible d'initialiser Stripe.");
       }
 
       const res = await fetch("/api/checkout_sessions", {
@@ -243,6 +243,25 @@ export default function DonationPage() {
           onError={() => setError("Impossible de charger le script de paiement PayPal.")}
           strategy="afterInteractive"
       />
+      <header className="w-full px-4 sm:px-6 py-3 flex justify-between items-center shadow-sm sticky top-0 bg-white/95 z-50">
+        <Link href="/" aria-label="Retour à la Page d'accueil">
+          <Image
+            src="/noBgColor.png" // Utilisation du logo couleur sur fond blanc
+            alt="Kenomi Logo"
+            width={180}
+            height={30}
+            priority
+          />
+        </Link>
+        <Link
+          href="/"
+          className="px-4 py-2 text-sm
+                    font-semibold text-gray-700 bg-gray-200
+                    rounded-full hover:bg-gray-200 transition"
+        >
+          Retour à l&apos;accueil
+        </Link>
+      </header>
 
       <main className="min-h-screen bg-gray-100 font-sans flex items-center justify-center p-4">
         <motion.div

@@ -294,8 +294,8 @@ export const Hero = memo(function Hero() {
                 src="/image1.png"
                 alt="Session de formation à la cybersécurité en PME"
                 fill
-                style={{ objectFit: "cover" }}
-                sizes="(min-width: 1024px) 560px, (min-width: 768px) 50vw, 100vw"
+                 className="object-contain md:object-cover"
+    sizes="(min-width: 1024px) 560px, (min-width: 768px) 50vw, 100vw"
                 priority
               />
             </div>

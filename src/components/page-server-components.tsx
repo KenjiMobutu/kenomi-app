@@ -131,9 +131,10 @@ export const Footer = memo(function Footer() {
                 Mentions légales </Link>
               </li>
               <li>
-                <a href="#" className="hover:underline">
-                  Politique de confidentialité
-                </a>
+
+                <Link href="/politique_confidentialite" className="hover:underline">
+                Politique de confidentialité </Link>
+
               </li>
               <li>
                 <a href="mailto:contact@kenomi.eu" className="hover:underline">
