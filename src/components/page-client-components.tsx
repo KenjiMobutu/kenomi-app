@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useInView, AnimatePresence, animate, Variants } from "framer-motion";
-import { useEffect, useState, useRef, ReactNode, memo } from "react";
+// MODIFIÉ: Ajout de useState, useRef, ReactNode, memo, FormEvent
+import { useEffect, useState, useRef, ReactNode, memo, FormEvent } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { Briefcase, Users2, Heart, ArrowUp, Menu, X , Package, Handshake, Users, Smile } from 'lucide-react';
 
@@ -655,21 +656,134 @@ function Testimonial({ name, text }: { name: string; text: string }) {
     );
 }
 
+// --- MODIFICATION COMPOSANT NEWSLETTER ---
+
 export const Newsletter = memo(function Newsletter() {
+    // États pour gérer le formulaire
+    const [email, setEmail] = useState('');
+    const [consent, setConsent] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState(''); // Pour les retours de succès ou d'erreur
+    const [error, setError] = useState(false);
+
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
+        // Validation côté client
+        if (!consent) {
+            setError(true);
+            setMessage("Vous devez accepter la politique de confidentialité pour vous inscrire.");
+            return;
+        }
+        if (!email) {
+            setError(true);
+            setMessage("Veuillez entrer une adresse e-mail.");
+            return;
+        }
+
+        setLoading(true);
+        setError(false);
+        setMessage('');
+
+        try {
+            const res = await fetch('/api/newsletter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, consent }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                // Gérer les erreurs de l'API (ex: email déjà inscrit, erreur serveur)
+                throw new Error(data.error || "Une erreur est survenue.");
+            }
+
+            // Succès
+            setError(false);
+            setMessage("Inscription réussie ! Merci de nous rejoindre.");
+            setEmail(''); // Réinitialiser le champ
+            setConsent(false); // Réinitialiser la case
+
+        } catch (err: unknown) {
+            setError(true);
+            if (err instanceof Error) {
+                setMessage(err.message);
+            } else {
+                setMessage("Une erreur inconnue est survenue.");
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <motion.section className="w-full py-16 bg-white px-6 lg:px-8"
             variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }}>
             <div className="max-w-2xl mx-auto text-center bg-gray-100 p-8 sm:p-12 rounded-2xl">
                 <h3 className="text-2xl font-bold text-gray-900">Restez informé·e de notre impact local</h3>
                 <p className="mt-2 text-gray-600 text-center">Recevez les dernières nouvelles de nos projets en Belgique.</p>
-                <form className="mt-6 flex flex-col sm:flex-row gap-3 w-full">
-                    <input type="email" placeholder="Votre adresse e-mail" className="flex-grow px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none w-full" />
-                    <motion.button whileHover={{ scale: 1.05 }} type="submit" className="px-6 py-3 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm hover:bg-indigo-700">S&apos;abonner</motion.button>
+
+                {/* Formulaire rendu fonctionnel */}
+                <form onSubmit={handleSubmit} className="mt-6 w-full space-y-4">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <input
+                            type="email"
+                            placeholder="Votre adresse e-mail"
+                            className="flex-grow px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none w-full"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            disabled={loading}
+                            aria-label="Adresse e-mail pour la newsletter"
+                            required
+                        />
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            type="submit"
+                            className="px-6 py-3 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                            disabled={loading}
+                        >
+                            {loading ? "Envoi..." : "S'abonner"}
+                        </motion.button>
+                    </div>
+
+                    {/* Champ de consentement RGPD OBLIGATOIRE */}
+                    <div className="text-left">
+                        <label className="flex items-start gap-3 cursor-pointer text-sm text-gray-600">
+                            <input
+                                type="checkbox"
+                                className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                checked={consent}
+                                onChange={(e) => setConsent(e.target.checked)}
+                                disabled={loading}
+                                aria-label="Consentement à la politique de confidentialité"
+                                required
+                            />
+                            <span>
+                                J&apos;accepte de recevoir la newsletter de Kenomi et je certifie avoir lu et accepté la <Link href="/politique_confidentialite" target="_blank" className="font-semibold text-indigo-600 hover:underline">politique de confidentialité</Link>.
+                            </span>
+                        </label>
+                    </div>
+
+                    {/* Affichage des messages de retour */}
+                    {message && (
+                        <AnimatePresence>
+                            <motion.p
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className={`text-sm font-medium ${error ? 'text-red-600' : 'text-green-600'}`}
+                            >
+                                {message}
+                            </motion.p>
+                        </AnimatePresence>
+                    )}
                 </form>
             </div>
         </motion.section>
     );
 });
+// --- FIN MODIFICATION NEWSLETTER ---
 
 export function StickyButtons() {
     const [isVisible, setIsVisible] = useState(false);

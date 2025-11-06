@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { createClient } from '@supabase/supabase-js';
 import { Bar, Line } from 'react-chartjs-2';
 import { useUser } from '@clerk/nextjs';
 import { FaChartBar, FaCalendarAlt, FaTrophy, FaTable, FaDownload, FaSearch, FaEuroSign, FaHashtag, FaChartPie } from 'react-icons/fa';
@@ -33,10 +32,7 @@ ChartJS.register(
   Tooltip,
   Legend
 );
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+
 
 // SUPPRIMÉ: Interface UserProfile redondante avec Clerk
 /*
@@ -113,21 +109,31 @@ export default function AdminDonationsPage() {
   useEffect(() => {
     console.log('Utilisateur Clerk:', user);
     async function fetchDonations() {
-      const { data: donationsData, error } = await supabase.from('admin_donations').select('*');
-      if (error) console.error('Erreur Supabase :', error);
-      else setDonations(donationsData as Donation[]);
-      setLoading(false);
+      try {
+        // L'API route /api/admin/donations vérifiera le rôle admin côté serveur
+        const res = await fetch('/api/admin/donations');
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || `Erreur ${res.status}`);
+        }
+
+        const donationsData = await res.json();
+        setDonations(donationsData as Donation[]);
+
+      } catch (error) {
+        console.error('Erreur lors de la récupération des dons:', error);
+        // Ici, vous pourriez définir un état d'erreur pour l'afficher à l'admin
+      } finally {
+        setLoading(false);
+      }
+    }
+    // Ne fetch les dons que si l'utilisateur est chargé (pour s'assurer que le cookie d'authentification est envoyé)
+    if (user) {
+      fetchDonations();
     }
 
-    // SUPPRIMÉ: fetchUserProfile (remplacé par useUser)
-    /*
-    async function fetchUserProfile() {
-      // ... logique supabase.auth.getUser() ...
-    }
-    */
 
-    fetchDonations();
-    // fetchUserProfile(); // SUPPRIMÉ
 
     // Ajout simulation latence (pour stats/cartes/graphes)
     setTimeout(() => {
