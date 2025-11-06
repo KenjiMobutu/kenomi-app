@@ -77,9 +77,7 @@ export default function MentionsLegalesPage() {
                 <strong>Forme juridique :</strong> Association Sans But Lucratif (ASBL)
               </li>
               <li>
-                <strong>Siège social :</strong> [À COMPLÉTER : Adresse complète
-                du siège social, ex: Rue des Exemples 1, 1000 Bruxelles,
-                Belgique]
+                <strong>Siège social :</strong> 18, Rue Buchholtz 1050 Bruxelles, Belgique
               </li>
               <li>
                 <strong>Numéro BCE :</strong> [À COMPLÉTER : Votre numéro de la

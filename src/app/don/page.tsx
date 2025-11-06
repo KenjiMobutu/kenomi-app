@@ -7,6 +7,7 @@ import Image from 'next/image'; // AJOUT: Import manquant pour le composant Imag
 // import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js"; // Retiré pour chargement par CDN
 import { memo } from 'react'; // Import memo pour l'optimisation
 import Script from 'next/script'; // Import pour charger les scripts externes
+import { useUser } from '@clerk/nextjs';
 
 // --- Optimisation: Définition des icônes en dehors du composant ---
 const HeartIcon = memo(() => (
@@ -101,6 +102,29 @@ export default function DonationPage() {
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal'>('stripe');
   const [isSdkReady, setIsSdkReady] = useState(false); // État pour le chargement du SDK PayPal
 
+  // --- User Info ---
+  const { user } = useUser();
+  useEffect(() => {
+    if (user && user.emailAddresses && user.emailAddresses.length > 0) {
+      //pré-remplir le prénom et nom si disponibles et rendre les champs readonly si connecté
+
+      const firstNameInput = document.querySelector('input[name="firstName"]') as HTMLInputElement;
+      const lastNameInput = document.querySelector('input[name="lastName"]') as HTMLInputElement;
+      if (firstNameInput && user.firstName) {
+        firstNameInput.readOnly = true;
+        firstNameInput.value = user.firstName;
+      }
+      if (lastNameInput && user.lastName) {
+        lastNameInput.readOnly = true;
+        lastNameInput.value = user.lastName;
+      }
+      // Pré-remplir l'email si l'utilisateur est connecté
+      const emailInput = document.querySelector('input[name="email"]') as HTMLInputElement;
+      if (emailInput) {
+        emailInput.value = user.emailAddresses[0].emailAddress;
+      }
+    }
+  }, [user]);
   // --- Effects ---
   useEffect(() => {
     if (frequency === 'monthly' && paymentMethod === 'paypal') {

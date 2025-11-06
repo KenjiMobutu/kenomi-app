@@ -74,8 +74,7 @@ export default function PolitiqueDeConfidentialitePage() {
                 <strong>Dénomination sociale :</strong> Kenomi ASBL
               </li>
               <li>
-                <strong>Siège social :</strong> [À COMPLÉTER : Adresse complète
-                du siège social]
+                <strong>Siège social :</strong> 18, Rue Buchholtz 1050 Bruxelles, Belgique
               </li>
               <li>
                 <strong>Numéro BCE :</strong> [À COMPLÉTER : Votre numéro BCE]
@@ -235,8 +234,8 @@ export default function PolitiqueDeConfidentialitePage() {
             <ul className="list-disc pl-6 mt-2 space-y-1">
               <li>
                 <strong>Données de compte :</strong> Tant que votre compte est
-                actif. En cas d&apos;inactivité pendant [À COMPLÉTER : ex: 3
-                ans], votre compte pourra être supprimé.
+                actif. En cas d&apos;inactivité pendant 3
+                ans, votre compte pourra être supprimé.
               </li>
               <li>
                 <strong>Données de dons :</strong> Conservées pendant 7 ans,
