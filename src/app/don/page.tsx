@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { motion } from "framer-motion";
 // MODIFIÉ: Ajout de 'useRef' et 'FormEvent'
-import { useState, useEffect, FormEvent, useRef, memo } from "react";
+import { useState, useEffect, FormEvent, useRef, memo, useCallback  } from "react";
 import Image from 'next/image';
 import Script from 'next/script';
 
@@ -184,7 +184,7 @@ export default function DonationPage() {
    * Étape 1: Appelle notre API pour CRÉER un ordre PayPal.
    * Renvoie l'ID de l'ordre à l'SDK PayPal.
    */
-  const createPayPalOrder = async (): Promise<string> => {
+  const createPayPalOrder = useCallback(async (): Promise<string> =>  {
     setLoading(true);
     setError(null);
 
@@ -218,13 +218,13 @@ export default function DonationPage() {
       setLoading(false);
       throw new Error(msg); // Transmet l'erreur à l'SDK PayPal
     }
-  };
+   }, [amount, firstName, lastName, email]);
 
   /**
    * Étape 2: Appelle notre API pour CAPTURER l'ordre après approbation du client.
    * L'API valide le paiement ET enregistre dans Supabase.
    */
-  const onPayPalApprove = async (data: { orderID: string }): Promise<void> => {
+  const onPayPalApprove = useCallback(async (data: { orderID: string }): Promise<void> =>{
     try {
       const res = await fetch('/api/paypal/capture-order', {
         method: 'POST',
@@ -252,13 +252,13 @@ export default function DonationPage() {
       setError(`Erreur lors de la finalisation : ${msg}. Votre compte n'a pas été débité.`);
       setLoading(false);
     }
-  };
+  }, [firstName, lastName, email]);
 
-  const onPayPalError = (err: unknown) => {
+  const onPayPalError = useCallback((err: unknown) => {
     console.error("Erreur PayPal SDK:", err);
     setError("Une erreur est survenue avec PayPal. Veuillez réessayer ou utiliser une autre méthode.");
     setLoading(false);
-  };
+  }, []);
 
   // --- Rendu du composant ---
   return (
