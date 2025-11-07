@@ -1,64 +1,56 @@
 'use client';
 import Link from 'next/link';
 import { motion } from "framer-motion";
-import { useState, useEffect, FormEvent, useRef } from "react";
-import Image from 'next/image'; // AJOUT: Import manquant pour le composant Image
-// import { loadStripe } from "@stripe/stripe-js"; // Retiré pour chargement par CDN
-// import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js"; // Retiré pour chargement par CDN
-import { memo } from 'react'; // Import memo pour l'optimisation
-import Script from 'next/script'; // Import pour charger les scripts externes
-import { useUser } from '@clerk/nextjs';
+// MODIFIÉ: Ajout de 'useRef' et 'FormEvent'
+import { useState, useEffect, FormEvent, useRef, memo } from "react";
+import Image from 'next/image';
+import Script from 'next/script';
 
-// --- Optimisation: Définition des icônes en dehors du composant ---
+// --- Icônes (inchangées) ---
 const HeartIcon = memo(() => (
+// ... (code de l'icône inchangé) ...
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-3 flex-shrink-0 text-pink-300">
         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
     </svg>
 ));
 HeartIcon.displayName = 'HeartIcon';
-
 const CheckIcon = memo(() => (
+// ... (code de l'icône inchangé) ...
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-white">
         <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
 ));
 CheckIcon.displayName = 'CheckIcon';
 
-
 // --- Configuration ---
-// const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!); // Remplacé par chargement via <Script>
 const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "sb";
 const stripePublicKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!;
 
-// --- AJOUT SÉCURITÉ: Options de don avec ID ---
 const donationOptions = [
   { id: 'don_25', amount: 25, label: '25€' },
   { id: 'don_50', amount: 50, label: '50€' },
   { id: 'don_150', amount: 150, label: '150€' },
 ];
 
-// --- Composant Wrapper pour le bouton PayPal ---
-const PayPalPaymentButton = ({ amount, createOrder, onApprove, isSdkReady, disabled, onError }: {
-  amount: number;
-  createOrder: (data: unknown, actions: unknown) => unknown;
-  onApprove: (data: unknown, actions: unknown) => Promise<void>;
+// --- Composant Wrapper PayPal ---
+// MODIFIÉ: Ce composant est simplifié. Il n'a plus besoin de props complexes,
+// car la logique est gérée dans la page principale.
+const PayPalPaymentButton = ({ isSdkReady, disabled, createOrder, onApprove, onError }: {
   isSdkReady: boolean;
   disabled: boolean;
+  createOrder: () => Promise<string>;
+  onApprove: (data: { orderID: string }) => Promise<void>;
   onError: (err: unknown) => void;
 }) => {
     const paypalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        // CORRECTION: Ajout d'une suppression ciblée pour l'accès au SDK global
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (isSdkReady && (window as any).paypal && paypalRef.current) {
-            // Vider le conteneur avant de rendre un nouveau bouton
-            paypalRef.current.innerHTML = "";
+            paypalRef.current.innerHTML = ""; // Nettoyer les anciens boutons
 
             try {
-                // Rendre le nouveau bouton
-                // CORRECTION: Ajout d'une suppression ciblée
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).paypal.Buttons({
                     createOrder,
                     onApprove,
@@ -68,72 +60,52 @@ const PayPalPaymentButton = ({ amount, createOrder, onApprove, isSdkReady, disab
                         tagline: false,
                         height: 55,
                     },
-                    // CORRECTION: Ajout d'une suppression ciblée
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     fundingSource: (window as any).paypal.FUNDING.PAYPAL,
-                }).render(paypalRef.current).catch((err: unknown) => { // CORRECTION: any -> unknown
+                }).render(paypalRef.current).catch((err: unknown) => {
                     console.error("Échec du rendu des boutons PayPal :", err);
                     onError(err);
                 });
-            } catch (err: unknown) { // CORRECTION: any -> unknown
+            } catch (err: unknown) {
                  console.error("Erreur lors de l'initialisation de PayPal :", err);
                  onError(err);
             }
         }
-    }, [isSdkReady, amount, disabled, createOrder, onApprove, onError]); // Re-rendre si ces props changent
+    // MODIFIÉ: createOrder et onApprove sont maintenant des dépendances
+    }, [isSdkReady, disabled, createOrder, onApprove, onError]);
 
     if (!isSdkReady) {
         return <div className="w-full px-6 py-4 bg-gray-200 text-gray-500 text-lg font-bold rounded-lg text-center animate-pulse">Chargement PayPal...</div>;
     }
 
-    // Conteneur où le bouton PayPal sera injecté
     return <div ref={paypalRef} id="paypal-button-container"></div>;
 }
 
 
 export default function DonationPage() {
-  // --- Component State ---
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [amount, setAmount] = useState<number>(50); // Montant affiché, utilisé par PayPal
-  const [priceId, setPriceId] = useState<string>('don_50'); // ID pour Stripe (prédéfini)
+  const [amount, setAmount] = useState<number>(50);
+  const [priceId, setPriceId] = useState<string>('don_50');
   const [isCustomAmount, setIsCustomAmount] = useState(false);
   const [frequency, setFrequency] = useState<'once' | 'monthly'>('once');
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal'>('stripe');
-  const [isSdkReady, setIsSdkReady] = useState(false); // État pour le chargement du SDK PayPal
+  const [isSdkReady, setIsSdkReady] = useState(false);
 
-  // --- User Info ---
-  const { user } = useUser();
-  useEffect(() => {
-    if (user && user.emailAddresses && user.emailAddresses.length > 0) {
-      //pré-remplir le prénom et nom si disponibles et rendre les champs readonly si connecté
+  // --- AJOUT : États pour les champs contrôlés ---
+  // Nécessaire pour que les gestionnaires PayPal puissent lire les infos
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
 
-      const firstNameInput = document.querySelector('input[name="firstName"]') as HTMLInputElement;
-      const lastNameInput = document.querySelector('input[name="lastName"]') as HTMLInputElement;
-      if (firstNameInput && user.firstName) {
-        firstNameInput.readOnly = true;
-        firstNameInput.value = user.firstName;
-      }
-      if (lastNameInput && user.lastName) {
-        lastNameInput.readOnly = true;
-        lastNameInput.value = user.lastName;
-      }
-      // Pré-remplir l'email si l'utilisateur est connecté
-      const emailInput = document.querySelector('input[name="email"]') as HTMLInputElement;
-      if (emailInput) {
-        emailInput.value = user.emailAddresses[0].emailAddress;
-      }
-    }
-  }, [user]);
-  // --- Effects ---
   useEffect(() => {
     if (frequency === 'monthly' && paymentMethod === 'paypal') {
       setPaymentMethod('stripe');
     }
   }, [frequency, paymentMethod]);
 
-  // --- Event Handlers ---
   const handleAmountSelect = (value: number | 'custom', id: string | null = null) => {
+    // ... (logique inchangée) ...
     setError(null);
     if (value === 'custom') {
       setIsCustomAmount(true);
@@ -147,6 +119,7 @@ export default function DonationPage() {
   };
 
   const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ... (logique inchangée) ...
     const value = parseFloat(e.target.value);
     if (!isNaN(value) && value > 0) {
       setAmount(value); // Montant pour affichage et PayPal
@@ -159,32 +132,28 @@ export default function DonationPage() {
 
   const handleStripeSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (amount <= 0) {
+    if (amount <= 0 && frequency === 'once') { // Vérification affinée
       setError("Veuillez entrer ou sélectionner un montant valide.");
       return;
     }
     setLoading(true);
     setError(null);
 
-    const form = e.currentTarget;
+    // MODIFIÉ: Lecture depuis l'état (state)
     const formData = {
-      firstName: (form.elements.namedItem("firstName") as HTMLInputElement).value,
-      lastName: (form.elements.namedItem("lastName") as HTMLInputElement).value,
-      email: (form.elements.namedItem("email") as HTMLInputElement).value,
-      amount: isCustomAmount ? amount : undefined, // N'envoie le montant que s'il est personnalisé
-      priceId: !isCustomAmount ? priceId : undefined, // N'envoie l'ID que s'il est prédéfini
+      firstName,
+      lastName,
+      email,
+      amount: (isCustomAmount || frequency === 'once') ? amount : undefined,
+      priceId: !isCustomAmount ? priceId : undefined,
       frequency,
     };
 
     try {
-      // Vérifier si Stripe.js est chargé
-      // CORRECTION: Ajout d'une suppression ciblée
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (!(window as any).Stripe) {
           throw new Error("Stripe.js n'a pas pu être chargé. Veuillez rafraîchir la page.");
       }
-      // Initialiser Stripe
-      // CORRECTION: Ajout d'une suppression ciblée
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const stripe = (window as any).Stripe(stripePublicKey);
       if (!stripe) {
@@ -201,73 +170,112 @@ export default function DonationPage() {
         throw new Error(errorData.error || "La création de la session de paiement a échoué.");
       }
       const data = await res.json();
-      // const stripe = await stripePromise; // Remplacé par l'initialisation ci-dessus
       await stripe.redirectToCheckout({ sessionId: data.id });
-    } catch (err: unknown) { // CORRECTION: any -> unknown
-      setError((err as Error).message); // CORRECTION: Typage de l'erreur
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- PayPal Logic ---
-  // CORRECTION: Ajout d'une suppression ciblée pour 'actions'
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const createPayPalOrder = (data: unknown, actions: any) => { // CORRECTION: data: any -> unknown, actions: any (conservé car SDK complexe)
-    // S'assurer que le montant est valide avant de créer l'ordre
-    if (amount <= 0) {
-        setError("Montant PayPal non valide.");
-        return;
-    }
-    return actions.order.create({
-      purchase_units: [{
-        description: "Don pour la mission Kenomi",
-        amount: { value: amount.toString(), currency_code: 'EUR' },
-      }],
-      application_context: { brand_name: 'Kenomi', shipping_preference: 'NO_SHIPPING' },
-    });
-  };
+  // --- NOUVELLE LOGIQUE PAYPAL CÔTÉ SERVEUR ---
 
-  // CORRECTION: Ajout d'une suppression ciblée pour 'actions'
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onPayPalApprove = async (data: unknown, actions: any) => { // CORRECTION: data: any -> unknown, actions: any (conservé car SDK complexe)
+  /**
+   * Étape 1: Appelle notre API pour CRÉER un ordre PayPal.
+   * Renvoie l'ID de l'ordre à l'SDK PayPal.
+   */
+  const createPayPalOrder = async (): Promise<string> => {
     setLoading(true);
+    setError(null);
+
+    if (amount <= 0 || !firstName || !lastName || !email) {
+      setError("Veuillez remplir tous les champs (nom, email, montant) avant de payer.");
+      setLoading(false);
+      throw new Error("Formulaire incomplet.");
+    }
+
     try {
-      await actions.order.capture();
-      console.log("Don PayPal réussi!", data);
-      // Redirection vers une page de succès générique pour PayPal
-      window.location.href = '/don/success';
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (err) { // CORRECTION: Variable 'err' inutilisée, supprimée
-      setError("Une erreur est survenue lors de la finalisation du don PayPal.");
-    } finally {
+      const res = await fetch('/api/paypal/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amount.toString(),
+          // Note: PayPal ne gère pas les abonnements via ce flux SDK standard.
+          // Le flux récurrent reste exclusif à Stripe pour le moment.
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors de la création de la commande PayPal.');
+      }
+
+      return data.id; // Renvoie l'ID de l'ordre
+
+    } catch (err: unknown) {
+      const msg = (err as Error).message;
+      setError(msg);
+      setLoading(false);
+      throw new Error(msg); // Transmet l'erreur à l'SDK PayPal
+    }
+  };
+
+  /**
+   * Étape 2: Appelle notre API pour CAPTURER l'ordre après approbation du client.
+   * L'API valide le paiement ET enregistre dans Supabase.
+   */
+  const onPayPalApprove = async (data: { orderID: string }): Promise<void> => {
+    try {
+      const res = await fetch('/api/paypal/capture-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderID: data.orderID,
+          // Nous transmettons les infos du donateur pour l'enregistrement en BDD
+          donatorName: `${firstName} ${lastName}`,
+          donatorEmail: email,
+          frequency: 'once' // Ce flux ne gère que les dons uniques
+        }),
+      });
+
+      const captureData = await res.json();
+      if (!res.ok) {
+        throw new Error(captureData.error || 'Erreur lors de la capture du paiement.');
+      }
+
+      // Succès ! Le serveur a capturé le paiement et l'a enregistré.
+      console.log("Don PayPal capturé et enregistré!", captureData);
+      window.location.href = '/don/success'; // Redirection vers la page de succès
+
+    } catch (err: unknown) {
+      const msg = (err as Error).message;
+      setError(`Erreur lors de la finalisation : ${msg}. Votre compte n'a pas été débité.`);
       setLoading(false);
     }
   };
 
-  const onPayPalError = (err: unknown) => { // CORRECTION: any -> unknown
-    console.error("Erreur PayPal :", err);
+  const onPayPalError = (err: unknown) => {
+    console.error("Erreur PayPal SDK:", err);
     setError("Une erreur est survenue avec PayPal. Veuillez réessayer ou utiliser une autre méthode.");
-  }
+    setLoading(false);
+  };
 
-  // --- Component Render ---
+  // --- Rendu du composant ---
   return (
-    // Retrait du PayPalScriptProvider
     <>
       <Script
           src="https://js.stripe.com/v3/"
           strategy="afterInteractive"
-          // CORRECTION: Variable 'e' inutilisée, supprimée
           onError={() => setError("Impossible de charger le script de paiement Stripe.")}
       />
       <Script
           src={`https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=EUR&intent=capture`}
           onLoad={() => setIsSdkReady(true)}
-          // CORRECTION: Variable 'e' inutilisée, supprimée
           onError={() => setError("Impossible de charger le script de paiement PayPal.")}
           strategy="afterInteractive"
       />
       <header className="w-full px-4 sm:px-6 py-3 flex justify-between items-center shadow-sm sticky top-0 bg-white/95 z-50">
+        {/* ... (Header inchangé) ... */}
         <Link href="/" aria-label="Retour à la Page d'accueil">
           <Image
             src="/noBgColor.png" // Utilisation du logo couleur sur fond blanc
@@ -294,9 +302,9 @@ export default function DonationPage() {
           transition={{ duration: 0.5, ease: "easeOut" }}
           className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-2"
         >
-          {/* Left Column - Visual & Impact */}
+          {/* --- Colonne de Gauche (Visuel) --- */}
           <div className="hidden lg:flex flex-col items-center justify-center bg-black  p-10 text-white text-center">
-            {/* CORRECTION: Remplacement de <img> par <Image> de next/image */}
+            {/* ... (Contenu visuel inchangé) ... */}
             <Image
               src="/happySeniorKenomi.png"
               alt="Personne âgée souriante utilisant une tablette grâce à l'aide de Kenomi"
@@ -307,7 +315,6 @@ export default function DonationPage() {
             />
             <h2 className="text-3xl font-bold leading-tight mb-4">Changez une vie aujourd&apos;hui.</h2>
             <p className="text-teal-100 text-lg mb-6 max-w-sm">Chaque contribution nous rapproche de notre objectif : un avenir numérique plus sûr et plus inclusif en Belgique.</p>
-            {/* MODIFIÉ: Retrait des références à la RDC. */}
             <div className="space-y-4 text-left text-teal-50 text-sm">
               <div className="flex items-start"><HeartIcon /><p><span className="font-bold">25€</span> &ndash; Finance un atelier de sensibilisation à la sécurité pour un senior.</p></div>
               <div className="flex items-start"><HeartIcon /><p><span className="font-bold">50€</span> &ndash; Contribue à l&apos;achat de logiciels pour un &quot;Kit d&apos;Autonomie&quot;.</p></div>
@@ -315,11 +322,13 @@ export default function DonationPage() {
             </div>
           </div>
 
-          {/* Right Column - Form */}
+          {/* --- Colonne de Droite (Formulaire) --- */}
           <div className="p-6 sm:p-10">
+            {/* MODIFIÉ: Le formulaire n'encapsule que les champs Stripe */}
             <form onSubmit={handleStripeSubmit} className="space-y-6">
               <div>
                 <h3 className="font-bold text-gray-800 text-lg mb-2">Choisissez votre type de don</h3>
+                {/* ... (Boutons Fréquence inchangés) ... */}
                 <div className="flex bg-gray-200 rounded-full p-1">
                   <button type="button" onClick={() => setFrequency('once')} className={`w-1/2 py-2 rounded-full text-sm font-semibold transition-colors ${frequency === 'once' ? 'bg-white text-gray-800 shadow' : 'text-gray-600'}`}>Une fois</button>
                   <button type="button" onClick={() => setFrequency('monthly')} className={`w-1/2 py-2 rounded-full text-sm font-semibold transition-colors ${frequency === 'monthly' ? 'bg-white text-gray-800 shadow' : 'text-gray-600'}`}>Mensuel</button>
@@ -328,7 +337,7 @@ export default function DonationPage() {
 
               <div>
                 <h3 className="font-bold text-gray-800 text-lg mb-3">Sélectionnez un montant</h3>
-                 {/* MODIFIÉ: Montants alignés sur la description (25, 50, 150) */}
+                {/* ... (Boutons Montant inchangés) ... */}
                 <div className="grid grid-cols-2 gap-3">
                     {donationOptions.map((opt) => (
                         <button type="button" key={opt.id} onClick={() => handleAmountSelect(opt.amount, opt.id)} className={`relative text-left p-3 border-2 rounded-lg font-bold text-gray-700 transition-all ${!isCustomAmount && priceId === opt.id ? 'border-grey-500 bg-teal-50' : 'border-gray-200 bg-gray-50 hover:border-gray-400'}`}>
@@ -352,15 +361,20 @@ export default function DonationPage() {
 
               <div>
                 <h3 className="font-bold text-gray-800 text-lg mb-3">Vos informations</h3>
+                {/* MODIFIÉ: Ajout de 'value' et 'onChange' pour les champs contrôlés */}
                 <div className="space-y-3">
-                    <input type="text" name="firstName" placeholder="Prénom" className="w-full px-4 py-2 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-black" required />
-                    <input type="text" name="lastName" placeholder="Nom" className="w-full px-4 py-2 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-black" required />
-                    <input type="email" name="email" placeholder="Adresse e-mail" className="w-full px-4 py-2 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-black" required />
+                    <input type="text" name="firstName" placeholder="Prénom" className="w-full px-4 py-2 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-black" required
+                           value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                    <input type="text" name="lastName" placeholder="Nom" className="w-full px-4 py-2 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-black" required
+                           value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                    <input type="email" name="email" placeholder="Adresse e-mail" className="w-full px-4 py-2 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-black" required
+                           value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
               </div>
 
               <div>
                 <h3 className="font-bold text-gray-800 text-lg mb-3">Paiement</h3>
+                {/* ... (Sélecteur de méthode de paiement inchangé) ... */}
                 <div className="grid grid-cols-2 gap-3">
                     <button type="button" onClick={() => setPaymentMethod('stripe')} className={`p-3 border-2 rounded-lg font-semibold text-gray-700 flex items-center justify-center transition-all ${paymentMethod === 'stripe' ? 'border-black bg-teal-50' : 'border-gray-200 hover:border-gray-400'}`}>Carte de crédit</button>
                     <button type="button" onClick={() => setPaymentMethod('paypal')} disabled={frequency === 'monthly'} className={`p-3 border-2 rounded-lg font-semibold text-gray-700 flex items-center justify-center transition-all ${paymentMethod === 'paypal' ? 'border-black bg-teal-50' : 'border-gray-200 hover:border-gray-400'} disabled:opacity-50 disabled:cursor-not-allowed`}>PayPal</button>
@@ -371,18 +385,17 @@ export default function DonationPage() {
 
               <div className="pt-2">
                 {paymentMethod === 'stripe' ? (
-                  <motion.button disabled={loading || amount <= 0} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="w-full px-6 py-4 bg-black hover:bg-blue-700 text-white text-lg font-bold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60">
+                  <motion.button disabled={loading || (amount <= 0 && frequency === 'once')} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="w-full px-6 py-4 bg-black hover:bg-blue-700 text-white text-lg font-bold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60">
                     {loading ? 'Traitement...' : `Faire un don de ${amount}€`}
                   </motion.button>
                 ) : (
-                  // Remplacement de PayPalButtons par notre wrapper
                   <PayPalPaymentButton
                       isSdkReady={isSdkReady}
-                      amount={amount}
+                      // MODIFIÉ: Passage des nouvelles fonctions de handler
                       createOrder={createPayPalOrder}
                       onApprove={onPayPalApprove}
                       onError={onPayPalError}
-                      disabled={loading || amount <= 0}
+                      disabled={loading || amount <= 0 || !firstName || !lastName || !email}
                   />
                 )}
               </div>
