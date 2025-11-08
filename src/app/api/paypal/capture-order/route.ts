@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { sendDonationConfirmationEmail } from '@/lib/emailClient';
 
 // --- Configuration PayPal ---
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
@@ -96,7 +97,19 @@ export async function POST(req: Request) {
         // Nous renvoyons quand même un succès, car le paiement a eu lieu.
       }
 
-      return NextResponse.json({ success: true, captureData });
+      // 2. MISE À JOUR: Envoyer l'e-mail de confirmation
+      await sendDonationConfirmationEmail({
+        email: donatorEmail,
+        name: donatorName ,
+        amount: amount,
+        frequency: 'once',
+      });
+
+      return NextResponse.json({
+        success: true,
+        orderID,
+        captureData
+      });
 
     } else {
       // Le statut n'est pas "COMPLETED" (ex: PENDING)

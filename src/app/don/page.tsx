@@ -64,8 +64,8 @@ const PayPalPaymentButton = ({ isSdkReady, disabled, createOrder, onApprove, onE
                     onError(err);
                 });
             } catch (err: unknown) {
-                 console.error("Erreur lors de l'initialisation de PayPal :", err);
-                 onError(err);
+                console.error("Erreur lors de l'initialisation de PayPal :", err);
+                onError(err);
             }
         }
     // MODIFIÉ: createOrder et onApprove sont maintenant des dépendances
