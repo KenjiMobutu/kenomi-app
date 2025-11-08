@@ -1,21 +1,19 @@
 'use client';
 import Link from 'next/link';
 import { motion } from "framer-motion";
-// MODIFIÉ: Ajout de 'useRef' et 'FormEvent'
 import { useState, useEffect, FormEvent, useRef, memo, useCallback  } from "react";
 import Image from 'next/image';
 import Script from 'next/script';
 
-// --- Icônes (inchangées) ---
+// --- Icônes ---
 const HeartIcon = memo(() => (
-// ... (code de l'icône inchangé) ...
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-3 flex-shrink-0 text-pink-300">
         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
     </svg>
 ));
+
 HeartIcon.displayName = 'HeartIcon';
 const CheckIcon = memo(() => (
-// ... (code de l'icône inchangé) ...
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-white">
         <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
@@ -48,7 +46,6 @@ const PayPalPaymentButton = ({ isSdkReady, disabled, createOrder, onApprove, onE
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (isSdkReady && (window as any).paypal && paypalRef.current) {
             paypalRef.current.innerHTML = ""; // Nettoyer les anciens boutons
-
             try {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).paypal.Buttons({
@@ -105,7 +102,7 @@ export default function DonationPage() {
   }, [frequency, paymentMethod]);
 
   const handleAmountSelect = (value: number | 'custom', id: string | null = null) => {
-    // ... (logique inchangée) ...
+
     setError(null);
     if (value === 'custom') {
       setIsCustomAmount(true);
@@ -119,7 +116,7 @@ export default function DonationPage() {
   };
 
   const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // ... (logique inchangée) ...
+
     const value = parseFloat(e.target.value);
     if (!isNaN(value) && value > 0) {
       setAmount(value); // Montant pour affichage et PayPal
@@ -209,9 +206,7 @@ export default function DonationPage() {
       if (!res.ok) {
         throw new Error(data.error || 'Erreur lors de la création de la commande PayPal.');
       }
-
       return data.id; // Renvoie l'ID de l'ordre
-
     } catch (err: unknown) {
       const msg = (err as Error).message;
       setError(msg);
@@ -275,7 +270,6 @@ export default function DonationPage() {
           strategy="afterInteractive"
       />
       <header className="w-full px-4 sm:px-6 py-3 flex justify-between items-center shadow-sm sticky top-0 bg-white/95 z-50">
-        {/* ... (Header inchangé) ... */}
         <Link href="/" aria-label="Retour à la Page d'accueil">
           <Image
             src="/noBgColor.png" // Utilisation du logo couleur sur fond blanc
@@ -304,7 +298,6 @@ export default function DonationPage() {
         >
           {/* --- Colonne de Gauche (Visuel) --- */}
           <div className="hidden lg:flex flex-col items-center justify-center bg-black  p-10 text-white text-center">
-            {/* ... (Contenu visuel inchangé) ... */}
             <Image
               src="/happySeniorKenomi.png"
               alt="Personne âgée souriante utilisant une tablette grâce à l'aide de Kenomi"
@@ -324,11 +317,11 @@ export default function DonationPage() {
 
           {/* --- Colonne de Droite (Formulaire) --- */}
           <div className="p-6 sm:p-10">
-            {/* MODIFIÉ: Le formulaire n'encapsule que les champs Stripe */}
+            {/* Le formulaire n'encapsule que les champs Stripe */}
             <form onSubmit={handleStripeSubmit} className="space-y-6">
               <div>
                 <h3 className="font-bold text-gray-800 text-lg mb-2">Choisissez votre type de don</h3>
-                {/* ... (Boutons Fréquence inchangés) ... */}
+                {/* ... (Boutons Fréquence) ... */}
                 <div className="flex bg-gray-200 rounded-full p-1">
                   <button type="button" onClick={() => setFrequency('once')} className={`w-1/2 py-2 rounded-full text-sm font-semibold transition-colors ${frequency === 'once' ? 'bg-white text-gray-800 shadow' : 'text-gray-600'}`}>Une fois</button>
                   <button type="button" onClick={() => setFrequency('monthly')} className={`w-1/2 py-2 rounded-full text-sm font-semibold transition-colors ${frequency === 'monthly' ? 'bg-white text-gray-800 shadow' : 'text-gray-600'}`}>Mensuel</button>
@@ -337,7 +330,7 @@ export default function DonationPage() {
 
               <div>
                 <h3 className="font-bold text-gray-800 text-lg mb-3">Sélectionnez un montant</h3>
-                {/* ... (Boutons Montant inchangés) ... */}
+                {/* ... (Boutons Montant) ... */}
                 <div className="grid grid-cols-2 gap-3">
                     {donationOptions.map((opt) => (
                         <button type="button" key={opt.id} onClick={() => handleAmountSelect(opt.amount, opt.id)} className={`relative text-left p-3 border-2 rounded-lg font-bold text-gray-700 transition-all ${!isCustomAmount && priceId === opt.id ? 'border-grey-500 bg-teal-50' : 'border-gray-200 bg-gray-50 hover:border-gray-400'}`}>
@@ -374,10 +367,22 @@ export default function DonationPage() {
 
               <div>
                 <h3 className="font-bold text-gray-800 text-lg mb-3">Paiement</h3>
-                {/* ... (Sélecteur de méthode de paiement inchangé) ... */}
-                <div className="grid grid-cols-2 gap-3">
-                    <button type="button" onClick={() => setPaymentMethod('stripe')} className={`p-3 border-2 rounded-lg font-semibold text-gray-700 flex items-center justify-center transition-all ${paymentMethod === 'stripe' ? 'border-black bg-teal-50' : 'border-gray-200 hover:border-gray-400'}`}>Carte de crédit</button>
-                    <button type="button" onClick={() => setPaymentMethod('paypal')} disabled={frequency === 'monthly'} className={`p-3 border-2 rounded-lg font-semibold text-gray-700 flex items-center justify-center transition-all ${paymentMethod === 'paypal' ? 'border-black bg-teal-50' : 'border-gray-200 hover:border-gray-400'} disabled:opacity-50 disabled:cursor-not-allowed`}>PayPal</button>
+                {/* ... (Sélecteur de méthode de paiement) ... */}
+                <div className={`grid ${frequency === 'monthly' ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
+                    <button type="button" onClick={() => setPaymentMethod('stripe')} className={`p-3 border-2 rounded-lg font-semibold text-gray-700 flex items-center justify-center transition-all ${paymentMethod === 'stripe' ? 'border-black bg-teal-50' : 'border-gray-200 hover:border-gray-400'}`}>
+                      Carte de crédit
+                    </button>
+                    {/* MODIFIÉ: Rendu conditionnel du bouton PayPal */}
+                    {frequency === 'once' && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('paypal')}
+                        // 'disabled' n'est plus nécessaire car le bouton est masqué
+                        className={`p-3 border-2 rounded-lg font-semibold text-gray-700 flex items-center justify-center transition-all ${paymentMethod === 'paypal' ? 'border-black bg-teal-50' : 'border-gray-200 hover:border-gray-400'}`}
+                      >
+                        PayPal
+                      </button>
+                    )}
                 </div>
               </div>
 
@@ -391,7 +396,7 @@ export default function DonationPage() {
                 ) : (
                   <PayPalPaymentButton
                       isSdkReady={isSdkReady}
-                      // MODIFIÉ: Passage des nouvelles fonctions de handler
+                      //Passage des nouvelles fonctions de handler
                       createOrder={createPayPalOrder}
                       onApprove={onPayPalApprove}
                       onError={onPayPalError}
