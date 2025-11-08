@@ -60,6 +60,8 @@ export async function POST(req: Request) {
       // Gérer les erreurs de capture (ex: fonds insuffisants, ordre déjà capturé)
       console.error("Erreur de capture PayPal:", captureData);
       throw new Error(captureData.message || 'Échec de la capture du paiement.');
+    }else {
+      console.log("1. => Capture PayPal réussie:", captureData);
     }
 
     // Étape 2: Vérifier le statut de la capture
@@ -70,6 +72,8 @@ export async function POST(req: Request) {
       const capture = captureData.purchase_units[0]?.payments?.captures[0];
       if (!capture) {
         throw new Error('Réponse de capture PayPal invalide.');
+      }else{
+        console.log("2. => Détails de la capture extraits avec succès:", capture);
       }
 
       const amount = parseFloat(capture.amount.value);
@@ -97,7 +101,7 @@ export async function POST(req: Request) {
         // Nous renvoyons quand même un succès, car le paiement a eu lieu.
       }
 
-      // 2. MISE À JOUR: Envoyer l'e-mail de confirmation
+      // 4. MISE À JOUR: Envoyer l'e-mail de confirmation
       await sendDonationConfirmationEmail({
         email: donatorEmail,
         name: donatorName ,

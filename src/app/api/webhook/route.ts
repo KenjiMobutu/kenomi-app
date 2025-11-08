@@ -72,6 +72,8 @@ export async function POST(req: NextRequest) {
           throw new Error(
             `Erreur Supabase (Webhook Stripe): ${dbError.message}`
           );
+        }else{
+          console.log("1 => Donation enregistrée avec succès dans la base de données pour la session:", session.id);
         }
 
         // 2. MISE À JOUR: Envoyer l'e-mail de confirmation
