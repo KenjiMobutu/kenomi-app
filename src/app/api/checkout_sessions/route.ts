@@ -56,6 +56,16 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ];
+      // AJOUT RECOMMANDÉ :
+      // Passez l'ID de la session de checkout (qui sera générée)
+      // dans les métadonnées de l'abonnement pour le retrouver dans le webhook.
+      sessionParams.subscription_data = {
+        metadata: {
+          // Stripe remplacera automatiquement '{CHECKOUT_SESSION_ID}'
+          // par l'ID de la session en cours de création.
+          checkout_session_id: '{CHECKOUT_SESSION_ID}',
+        },
+      };
 
     } else {
       // --- Logique pour les DONS UNIQUES (Paiement) ---

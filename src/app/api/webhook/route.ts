@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
         // 1. Insérer dans la base de données
         const { error: dbError } = await supabaseAdmin.from('donations').insert({
           stripe_session_id: checkoutSessionId, // Lier à la session de checkout
-          stripe_subscription_id: subscription.id, // Stocker l'ID de l'abonnement
+          //stripe_subscription_id: subscription.id, // Stocker l'ID de l'abonnement
           name: name,
           email: email,
           amount: amount,

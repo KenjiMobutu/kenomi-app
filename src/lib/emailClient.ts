@@ -62,7 +62,7 @@ export async function sendDonationConfirmationEmail(details: DonationDetails) {
   const payload = {
     sender: {
       name: 'Kenomi ASBL',
-      email: 'contact@kenomi.eu', // Doit être un expéditeur validé sur Brevo
+      email: 'kenji@kenomi.eu', // Doit être un expéditeur validé sur Brevo
     },
     to: [
       {
@@ -88,10 +88,12 @@ export async function sendDonationConfirmationEmail(details: DonationDetails) {
     if (!response.ok) {
       const errorData = await response.json();
       console.error("Erreur lors de l'envoi de l'e-mail Brevo:", errorData);
+      throw new Error(`Erreur Brevo: ${errorData.message || 'Échec de l\'envoi de l\'e-mail.'}`);
     } else {
       console.log(`E-mail de confirmation envoyé avec succès à ${email}.`);
     }
   } catch (error) {
     console.error("Erreur réseau lors de la communication avec Brevo:", error);
+    throw error;
   }
 }
