@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendDonationConfirmationEmail } from '@/lib/emailClient';
+import { generateDonationPDF } from '@/lib/pdfGenerator';
+
 
 // --- Configuration PayPal ---
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
@@ -79,6 +81,7 @@ export async function POST(req: Request) {
       const amount = parseFloat(capture.amount.value);
       const currency = capture.amount.currency_code;
       const paypalTransactionId = capture.id; // ID de transaction PayPal
+      const donationDate = new Date(); // Date de capture
 
       // Étape 3: Enregistrer le don vérifié dans Supabase
       const { error: dbError } = await supabaseAdmin
@@ -100,13 +103,23 @@ export async function POST(req: Request) {
         console.error("CRITIQUE: Paiement PayPal capturé mais échec BDD:", dbError.message);
         // Nous renvoyons quand même un succès, car le paiement a eu lieu.
       }
+      // 4. MODIFIÉ: Générer le PDF et envoyer l'e-mail
+      const donationDetails = {
+        email: donatorEmail,
+        name: donatorName,
+        amount: amount,
+        frequency: (frequency || 'once') as 'once' | 'monthly',
+        donationDate: donationDate,
+        transactionId: `paypal_${paypalTransactionId}`
+      };
+
+      // Générer le PDF en mémoire
+      const pdfBytes = await generateDonationPDF(donationDetails);
 
       // 4. MISE À JOUR: Envoyer l'e-mail de confirmation
       await sendDonationConfirmationEmail({
-        email: donatorEmail,
-        name: donatorName ,
-        amount: amount,
-        frequency: 'once',
+        ...donationDetails,
+        pdfBuffer: pdfBytes
       });
 
       return NextResponse.json({
