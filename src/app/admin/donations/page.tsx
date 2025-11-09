@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+// Importations React et bibliothèques
+import { useEffect, useState } from 'react'; // SUPPRIMÉ: useMemo, useRef
 import { motion } from 'framer-motion';
 import { Bar, Line } from 'react-chartjs-2';
 import { useUser } from '@clerk/nextjs';
@@ -22,6 +23,7 @@ import {
   ScriptableContext
 } from 'chart.js';
 
+// Enregistrement des composants Chart.js
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -33,14 +35,7 @@ ChartJS.register(
   Legend
 );
 
-
-// SUPPRIMÉ: Interface UserProfile redondante avec Clerk
-/*
-interface UserProfile {
-  full_name: string;
-  role: string;
-}
-*/
+// --- Définition des Interfaces ---
 
 interface Donation {
   id: string;
@@ -51,215 +46,160 @@ interface Donation {
   status: string;
   stripe_session_id: string;
   created_at: string;
-  frequency: 'once' | 'monthly' | null; // AJOUT: Pour suivre les dons récurrents
+  frequency: 'once' | 'monthly' | null;
 }
+
+interface StatsCards {
+  total: number;
+  count: number;
+  average: number;
+}
+interface ChartData {
+  labels: string[];
+  amountData: number[];
+  countData: number[];
+}
+interface TopDonor {
+  name: string;
+  email: string;
+  total: number;
+}
+
+// --- Composant Principal ---
 
 export default function AdminDonationsPage() {
   const defaultAvatar = "/favicon.svg";
-  // SUPPRIMÉ: États locaux redondants, gérés par useUser de Clerk
-  // const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  // const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const { user } = useUser();
 
+  // Données de la table
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  // Debounced search state
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  // Chargement asynchrone pour stats/cartes/graphes
+
+  // Données des stats et graphiques
+  const [stats, setStats] = useState<StatsCards>({ total: 0, count: 0, average: 0 });
+  const [chartData, setChartData] = useState<ChartData>({ labels: [], amountData: [], countData: [] });
+  const [topDonors, setTopDonors] = useState<TopDonor[]>([]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  // Filtres
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('all');
-  const [darkMode, setDarkMode] = useState(true);
-  // Ajout tri interactif
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Donation, direction: 'asc' | 'desc' } | null>(null);
-  // Modal de détails
-  const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null);
-  // Multi-critères filtres
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterCurrency, setFilterCurrency] = useState('all');
   const [minAmount, setMinAmount] = useState('');
-  const { user } = useUser();
-  // Pagination dynamique (infinite scroll)
-  const [visibleCount, setVisibleCount] = useState(20);
-  const loaderRef = useRef<HTMLDivElement | null>(null);
 
-  // Infinite scroll observer
+  // Tri
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'created_at', direction: 'desc' });
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageSize] = useState(20);
+
+  // Modal et UI
+  const [selectedDonation, setSelectedDonation] = useState<Donation | null>(null);
+  const [darkMode, setDarkMode] = useState(true); // Mode sombre conservé et activé par défaut
+
+  // Effet de debounce pour la recherche
   useEffect(() => {
-    const observer = new window.IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount((prev) => prev + 20);
-        }
-      },
-      { threshold: 1 }
-    );
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1); // Reset page on new search
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
-    const currentLoader = loaderRef.current; // CORRECTION: Copie pour cleanup
-    if (currentLoader) {
-      observer.observe(currentLoader);
-    }
+  // Reset page on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedMonth, filterStatus, filterCurrency, minAmount]);
 
-    return () => {
-      if (currentLoader) { // CORRECTION: Utilisation de la variable copiée
-        observer.unobserve(currentLoader);
+  // --- Effet de Fetching Côté Serveur ---
+  useEffect(() => {
+    if (!user) return; // Attendre que l'utilisateur soit chargé
+
+    const fetchAdminData = async () => {
+      setLoading(true);
+      setIsLoadingStats(true);
+
+      const params = new URLSearchParams();
+      params.append('page', currentPage.toString());
+      params.append('pageSize', pageSize.toString());
+      params.append('sortKey', sortConfig.key);
+      params.append('sortDirection', sortConfig.direction);
+      if (debouncedSearch) params.append('search', debouncedSearch);
+      if (selectedMonth !== 'all') {
+         const year = parseInt(selectedMonth.split('-')[0]);
+         const month = parseInt(selectedMonth.split('-')[1]);
+         const start = new Date(year, month - 1, 1);
+         const end = new Date(year, month, 0);
+         params.append('startDate', start.toISOString().split('T')[0]);
+         params.append('endDate', end.toISOString().split('T')[0]);
       }
-    };
-  }, []); // Ce hook gère uniquement l'observer, pas de dépendances nécessaires
+      if (filterStatus !== 'all') params.append('status', filterStatus);
+      if (filterCurrency !== 'all') params.append('currency', filterCurrency);
+      if (minAmount) params.append('minAmount', minAmount);
 
-  // Data fetching effect
-  useEffect(() => {
-    console.log('Utilisateur Clerk:', user);
-    async function fetchDonations() {
       try {
-        // L'API route /api/admin/donations vérifiera le rôle admin côté serveur
-        const res = await fetch('/api/admin/donations');
-
+        const res = await fetch(`/api/admin/donations?${params.toString()}`);
         if (!res.ok) {
           const errorData = await res.json();
           throw new Error(errorData.error || `Erreur ${res.status}`);
         }
 
-        const donationsData = await res.json();
-        setDonations(donationsData as Donation[]);
+        const data = await res.json();
+
+        setDonations(data.paginatedData as Donation[]);
+        setTotalCount(data.totalCount);
+        setStats(data.stats as StatsCards);
+        setChartData(data.chartData as ChartData);
+        setTopDonors(data.topDonors as TopDonor[]);
 
       } catch (error) {
         console.error('Erreur lors de la récupération des dons:', error);
-        // Ici, vous pourriez définir un état d'erreur pour l'afficher à l'admin
       } finally {
         setLoading(false);
+        setIsLoadingStats(false);
       }
-    }
-    // Ne fetch les dons que si l'utilisateur est chargé (pour s'assurer que le cookie d'authentification est envoyé)
-    if (user) {
-      fetchDonations();
-    }
-
-
-
-    // Ajout simulation latence (pour stats/cartes/graphes)
-    setTimeout(() => {
-      setIsLoadingStats(false);
-    }, 1000);
-  }, [user]); // CORRECTION: Dépendance à 'user' de Clerk
-
-  const filteredDonations = useMemo(() => {
-    const filtered = donations // CORRECTION: let -> const
-      .filter((don) => {
-        const matchesSearch =
-          (don.name && don.name.toLowerCase().includes(debouncedSearch.toLowerCase())) ||
-          (don.email && don.email.toLowerCase().includes(debouncedSearch.toLowerCase()));
-
-        const date = new Date(don.created_at);
-        const matchesMonth =
-          selectedMonth === 'all' ||
-          `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` === selectedMonth;
-
-        // Multi-critères avancé
-        const matchesStatus =
-          filterStatus === 'all' || don.status === filterStatus;
-        const matchesCurrency =
-          filterCurrency === 'all' || don.currency === filterCurrency;
-        const matchesMinAmount =
-          !minAmount || don.amount >= parseFloat(minAmount);
-
-        return matchesSearch && matchesMonth && matchesStatus && matchesCurrency && matchesMinAmount;
-      });
-    if (sortConfig) {
-      filtered.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
-
-        // Gestion des valeurs nulles ou undefined
-        if (aValue == null) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (bValue == null) return sortConfig.direction === 'asc' ? 1 : -1;
-
-        if (typeof aValue === 'string') {
-          return sortConfig.direction === 'asc'
-            ? (aValue as string).localeCompare(bValue as string)
-            : (bValue as string).localeCompare(aValue as string);
-        }
-        return sortConfig.direction === 'asc' ? +aValue - +bValue : +bValue - +aValue;
-      });
-    } else {
-      // Default sort by date desc si pas de tri actif
-      filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    }
-    return filtered;
-  }, [donations, debouncedSearch, selectedMonth, sortConfig, filterStatus, filterCurrency, minAmount]);
-
-  // Debounce effect for search
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [search]);
-
-  const totalAmount = donations.reduce((sum, d) => sum + d.amount, 0);
-  const avgAmount = donations.length ? (totalAmount / donations.length).toFixed(2) : '0';
-
-  const monthlyData = useMemo(() => {
-    const map = new Map<string, number>();
-    filteredDonations.forEach(don => {
-      const date = new Date(don.created_at);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      map.set(key, (map.get(key) || 0) + don.amount);
-    });
-    const sorted = [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
-    return {
-      labels: sorted.map(([key]) => new Date(`${key}-01`).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })),
-      datasets: [{
-        label: '€ Collectés',
-        data: sorted.map(([, value]) => value),
-        backgroundColor: function(ctx: ScriptableContext<"bar">) { // CORRECTION: Typage
-          const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
-          gradient.addColorStop(0, 'rgba(236,72,153,0.6)');
-          gradient.addColorStop(1, 'rgba(59,130,246,0.1)');
-          return gradient;
-        }
-      }]
     };
-  }, [filteredDonations]);
 
-  const monthlyCountData = useMemo(() => {
-    const map = new Map<string, number>();
-    filteredDonations.forEach(don => {
-      const date = new Date(don.created_at);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      map.set(key, (map.get(key) || 0) + 1);
-    });
-    const sorted = [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
-    return {
-      labels: sorted.map(([key]) =>
-        new Date(`${key}-01`).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
-      ),
-      datasets: [{
-        label: 'Nombre de dons',
-        data: sorted.map(([, value]) => value),
-        backgroundColor: function(ctx: ScriptableContext<"line">) { // CORRECTION: Typage
-          const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
-          gradient.addColorStop(0, 'rgba(236,72,153,0.6)');
-          gradient.addColorStop(1, 'rgba(59,130,246,0.1)');
-          return gradient;
-        },
-        borderColor: 'rgba(236,72,153,0.8)', // AJOUT
-        tension: 0.1 // AJOUT
-      }]
-    };
-  }, [filteredDonations]);
+    fetchAdminData();
+  // Dépendances pour le re-fetching
+  }, [user, currentPage, pageSize, debouncedSearch, selectedMonth, filterStatus, filterCurrency, minAmount, sortConfig]);
 
-  const topDonors = useMemo(() => {
-    const donorMap = new Map<string, { name: string, email: string, total: number }>();
-    donations.forEach(d => {
-      const key = d.email;
-      if (!key) return; // Ignorer les dons sans email
-      if (!donorMap.has(key)) {
-        donorMap.set(key, { name: d.name, email: d.email, total: 0 });
+  // --- Données pour les graphiques (basées sur l'état) ---
+  const monthlyAmountChart = {
+    labels: chartData.labels,
+    datasets: [{
+      label: '€ Collectés',
+      data: chartData.amountData,
+      backgroundColor: (ctx: ScriptableContext<"bar">) => {
+        const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(236,72,153,0.6)');
+        gradient.addColorStop(1, 'rgba(59,130,246,0.1)');
+        return gradient;
       }
-      donorMap.get(key)!.total += d.amount;
-    });
-    return [...donorMap.values()].sort((a, b) => b.total - a.total).slice(0, 5);
-  }, [donations]);
+    }]
+  };
 
+  const monthlyCountChart = {
+    labels: chartData.labels,
+    datasets: [{
+      label: 'Nombre de dons',
+      data: chartData.countData,
+      backgroundColor: (ctx: ScriptableContext<"line">) => {
+        const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(236,72,153,0.6)');
+        gradient.addColorStop(1, 'rgba(59,130,246,0.1)');
+        return gradient;
+      },
+      borderColor: 'rgba(236,72,153,0.8)',
+      tension: 0.1
+    }]
+  };
+
+  // --- Fonctions d'export (n'exportent que la page visible) ---
   function exportCSV() {
     const headers = ['Nom', 'Email', 'Montant', 'Devise', 'Statut', 'Date', 'Fréquence'];
     const rows = donations.map((d) => [
@@ -275,18 +215,17 @@ export default function AdminDonationsPage() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'donations_kenomi.csv');
+    link.setAttribute('download', 'donations_kenomi_page_' + currentPage + '.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    // Remplacé 'alert' par 'console.log' pour une meilleure expérience
     console.log('✅ Export CSV terminé avec succès');
   }
 
   function exportPDF() {
     const doc = new jsPDF();
     doc.setFontSize(18);
-    doc.text('Liste des dons - Kenomi', 14, 22);
+    doc.text('Liste des dons - Kenomi (Page ' + currentPage + ')', 14, 22);
     autoTable(doc, {
       head: [['Nom', 'Email', 'Montant', 'Devise', 'Statut', 'Date', 'Fréquence']],
       body: donations.map(d => [
@@ -302,8 +241,20 @@ export default function AdminDonationsPage() {
       styles: { fontSize: 10 },
       headStyles: { fillColor: [236, 72, 153] }
     });
-    doc.save('donations_kenomi.pdf');
+    doc.save('donations_kenomi_page_' + currentPage + '.pdf');
   }
+
+  // Fonction pour changer le tri
+  const handleSort = (key: string) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+    setCurrentPage(1); // Reset page on sort
+  };
+
+  // Calcul du nombre de pages
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
     <div className={`flex min-h-screen flex-col ${darkMode ? 'bg-gray-950 text-white' : 'bg-[#f4f6fa] text-gray-900'}`}>
@@ -324,7 +275,6 @@ export default function AdminDonationsPage() {
           >
             {darkMode ? '🌞 Light' : '🌙 Dark'}
           </motion.button>
-          {/* Notifications placeholder */}
           <button
             className="text-white text-lg"
             title="Notifications à venir"
@@ -340,7 +290,7 @@ export default function AdminDonationsPage() {
             </span>
           </div>
           <Image
-            src={user?.imageUrl || defaultAvatar} // CORRECTION: Utilisation de l'avatar Clerk
+            src={user?.imageUrl || defaultAvatar}
             alt="Admin"
             width={40}
             height={40}
@@ -348,6 +298,7 @@ export default function AdminDonationsPage() {
           />
         </div>
       </header>
+
       <div className={`flex flex-1`}>
         <aside className={`w-64 p-6 hidden sm:block shadow-md border-r ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white text-gray-800 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)] rounded-tr-3xl rounded-br-3xl'} transition-all duration-300 ease-in-out`}>
           <h2 className="text-2xl font-bold mb-8 text-gradient bg-gradient-to-r">MENU</h2>
@@ -359,6 +310,7 @@ export default function AdminDonationsPage() {
             <a href="#table" className={`flex items-center gap-2 ${darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-800 hover:text-black'}`}><FaTable /> Tableau</a>
           </nav>
         </aside>
+
         <main className="flex-1 p-6 sm:p-10 transition-all duration-300 ease-in-out">
           <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
             <div className="relative w-full sm:w-1/4 min-w-[200px]">
@@ -373,6 +325,7 @@ export default function AdminDonationsPage() {
                 className={`border rounded-xl shadow-sm px-4 py-2 pl-10 w-full transition-all duration-300 ease-in-out ${darkMode ? 'bg-gray-900 text-white border-gray-700' : 'bg-white text-black border-gray-200'}`}
               />
             </div>
+            {/* Note: La liste des mois n'affiche que les mois des données actuellement chargées. */}
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
@@ -388,7 +341,7 @@ export default function AdminDonationsPage() {
                 </option>
               ))}
             </select>
-            {/* Filtrage multi-critères */}
+
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -399,6 +352,7 @@ export default function AdminDonationsPage() {
               <option value="pending">⏳ En attente</option>
               <option value="failed">❌ Échoué</option>
             </select>
+            {/* Note: La liste des devises n'affiche que les devises des données actuellement chargées. */}
             <select
               value={filterCurrency}
               onChange={(e) => setFilterCurrency(e.target.value)}
@@ -436,6 +390,7 @@ export default function AdminDonationsPage() {
             </motion.button>
           </div>
 
+          {/* Cartes de Statistiques */}
           {isLoadingStats ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 animate-pulse">
               <div className="h-32 rounded-2xl bg-gray-800/50"></div>
@@ -450,51 +405,34 @@ export default function AdminDonationsPage() {
               viewport={{ once: true }}
               transition={{ duration: 0.6, ease: "easeOut" }}
             >
-              {/* Carte Total */}
               <div className={`rounded-2xl p-6 shadow-inner border text-center items-center justify-center flex flex-col bg-cover bg-center bg-no-repeat transition-all duration-300 ease-in-out animate-fade-in animate-[bgPulse_8s_ease-in-out_infinite]
-    ${darkMode
-      ? 'bg-[url("/cardbg.jpg")] bg-gray-900/80 border-gray-800'
-      : 'bg-[url("/cardbg.jpg")] bg-white/90 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'
-    }`}>
+                  ${darkMode ? 'bg-[url("/cardbg.jpg")] bg-gray-900/80 border-gray-800' : 'bg-[url("/cardbg.jpg")] bg-white/90 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'}`}>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="bg-lime-500/20 text-lime-500 p-2 rounded-full">
-                    <FaEuroSign />
-                  </div>
-                  <p className="text-sm text-gray-400">Dons total</p>
+                  <div className="bg-lime-500/20 text-lime-500 p-2 rounded-full"><FaEuroSign /></div>
+                  <p className="text-sm text-gray-400">Dons total (filtrés)</p>
                 </div>
-                <p className="text-2xl font-bold text-lime-400">€ {totalAmount.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-lime-400">€ {stats.total.toFixed(2)}</p>
               </div>
-              {/* Carte Nombre */}
               <div className={`rounded-2xl p-6 shadow-inner border text-center items-center justify-center flex flex-col bg-cover bg-center bg-no-repeat transition-all duration-300 ease-in-out animate-fade-in animate-[bgPulse_8s_ease-in-out_infinite]
-    ${darkMode
-      ? 'bg-[url("/cardbg.jpg")] bg-gray-900/80 border-gray-800'
-      : 'bg-[url("/cardbg.jpg")] bg-white/90 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'
-    }`}>
+                  ${darkMode ? 'bg-[url("/cardbg.jpg")] bg-gray-900/80 border-gray-800' : 'bg-[url("/cardbg.jpg")] bg-white/90 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'}`}>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="bg-blue-500/20 text-blue-500 p-2 rounded-full">
-                    <FaHashtag />
-                  </div>
-                  <p className="text-sm text-gray-400">Nombre de dons</p>
+                  <div className="bg-blue-500/20 text-blue-500 p-2 rounded-full"><FaHashtag /></div>
+                  <p className="text-sm text-gray-400">Nombre de dons (filtrés)</p>
                 </div>
-                <p className="text-3xl font-bold text-blue-400">{donations.length}</p>
+                <p className="text-3xl font-bold text-blue-400">{stats.count}</p>
               </div>
-              {/* Carte Moyenne */}
               <div className={`rounded-2xl p-6 shadow-inner border text-center items-center justify-center flex flex-col bg-cover bg-center bg-no-repeat transition-all duration-300 ease-in-out animate-fade-in animate-[bgPulse_8s_ease-in-out_infinite]
-    ${darkMode
-      ? 'bg-[url("/cardbg.jpg")] bg-gray-900/80 border-gray-800'
-      : 'bg-[url("/cardbg.jpg")] bg-white/90 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'
-    }`}>
+                  ${darkMode ? 'bg-[url("/cardbg.jpg")] bg-gray-900/80 border-gray-800' : 'bg-[url("/cardbg.jpg")] bg-white/90 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'}`}>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="bg-fuchsia-500/20 text-fuchsia-500 p-2 rounded-full">
-                    <FaChartPie />
-                  </div>
-                  <p className="text-sm text-gray-400">Moyenne</p>
+                  <div className="bg-fuchsia-500/20 text-fuchsia-500 p-2 rounded-full"><FaChartPie /></div>
+                  <p className="text-sm text-gray-400">Moyenne (filtrée)</p>
                 </div>
-                <p className="text-2xl font-bold text-fuchsia-400">{avgAmount} €</p>
+                <p className="text-2xl font-bold text-fuchsia-400">{stats.average.toFixed(2)} €</p>
               </div>
             </motion.div>
           )}
 
+          {/* Graphiques */}
           {isLoadingStats ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10 animate-pulse">
               <div className="h-64 rounded-2xl bg-gray-800/50"></div>
@@ -510,80 +448,59 @@ export default function AdminDonationsPage() {
               viewport={{ once: true }}
               transition={{ duration: 0.6, ease: "easeOut" }}
             >
+              {/* CORRECTION: Ce bloc utilise maintenant les stats de l'état */}
               <motion.div
                 id="stats"
-                className={`${darkMode
-                  ? 'bg-[url("/cardbg2.jpg")] bg-gray-900/90 bg-blend-overlay backdrop-blur-sm text-white border border-gray-800'
-                  : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm text-gray-900 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 text-sm transition-all duration-300 ease-in-out`}
+                className={`${darkMode ? 'bg-[url("/cardbg2.jpg")] bg-gray-900/90 bg-blend-overlay backdrop-blur-sm text-white border border-gray-800' : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm text-gray-900 border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 text-sm transition-all duration-300 ease-in-out`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
               >
-                Nombre de dons : <strong>{donations.length}</strong> | Montant total : <strong>{totalAmount.toFixed(2)}€</strong> | Don moyen : <strong>{avgAmount}€</strong>
+                Nombre de dons (filtrés) : <strong>{stats.count}</strong> | Montant total : <strong>{stats.total.toFixed(2)}€</strong> | Don moyen : <strong>{stats.average.toFixed(2)}€</strong>
               </motion.div>
 
               <motion.div
                 id="monthly"
-                className={`${darkMode
-                  ? 'bg-[url("/cardbg2.jpg")] bg-black/85 bg-blend-overlay backdrop-blur-sm border border-gray-800'
-                  : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out`}
+                className={`${darkMode ? 'bg-[url("/cardbg2.jpg")] bg-black/85 bg-blend-overlay backdrop-blur-sm border border-gray-800' : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
               >
                 <h2 className={`${darkMode ? 'text-white' : 'text-gray-800'} text-md font-semibold tracking-tight mb-2`}>
-                  <FaChartBar className="inline mr-2" /> Don par mois</h2>
+                  <FaChartBar className="inline mr-2" /> Don par mois (filtré)</h2>
                 <hr className={`${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-4`} />
-                <Bar
-                  data={monthlyData}
-                  options={{
-                    responsive: true,
-                    plugins: { legend: { position: 'top' } },
-                    scales: { x: { stacked: true }, y: { stacked: true } },
-                    elements: {
-                      bar: {
-                        borderRadius: 10,
-                        borderSkipped: false
-                      }
-                    }
-                  }}
-                />
+                <Bar data={monthlyAmountChart} options={{ responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true } }, elements: { bar: { borderRadius: 10, borderSkipped: false } } }} />
               </motion.div>
 
               <motion.div
                 id="count"
-                className={`${darkMode
-                  ? 'bg-[url("/cardbg2.jpg")]  bg-black/85  bg-blend-overlay backdrop-blur-sm border border-gray-800'
-                  : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out`}
+                className={`${darkMode ? 'bg-[url("/cardbg2.jpg")]  bg-black/85  bg-blend-overlay backdrop-blur-sm border border-gray-800' : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out`}
                 initial={{ opacity: 0, y: 80 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
               >
-                <h2 className={`${darkMode ? 'text-gray-300' : 'text-gray-800'} text-md font-semibold tracking-tight mb-2`}><FaTable className="inline mr-2" /> Nombre de dons par mois</h2>
+                <h2 className={`${darkMode ? 'text-gray-300' : 'text-gray-800'} text-md font-semibold tracking-tight mb-2`}><FaTable className="inline mr-2" /> Nombre de dons par mois (filtré)</h2>
                 <hr className={`${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-4`} />
-                <Line data={monthlyCountData} />
+                <Line data={monthlyCountChart} />
               </motion.div>
 
               <motion.div
                 id="top"
-                className={`${darkMode
-                  ? 'bg-[url("/cardbg2.jpg")]  bg-black/85  bg-blend-overlay backdrop-blur-sm border border-gray-800'
-                  : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out`}
-                initial={{ opacity: 0, y: 60 }} // Corrigé 'opacity: 2' en 'opacity: 0'
+                className={`${darkMode ? 'bg-[url("/cardbg2.jpg")]  bg-black/85  bg-blend-overlay backdrop-blur-sm border border-gray-800' : 'bg-[url("/cardbg2.jpg")] bg-white/95 bg-blend-overlay backdrop-blur-sm border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]'} rounded-2xl shadow-md p-6 transition-all duration-300 ease-in-out`}
+                initial={{ opacity: 0, y: 60 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
               >
-                <h2 className={`${darkMode ? 'text-gray-300' : 'text-gray-800'} text-md font-semibold tracking-tight mb-2`}><FaTrophy className="inline mr-2" /> Top donateurs</h2>
+                <h2 className={`${darkMode ? 'text-gray-300' : 'text-gray-800'} text-md font-semibold tracking-tight mb-2`}><FaTrophy className="inline mr-2" /> Top donateurs (filtrés)</h2>
                 <hr className={`${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-4`} />
                 <ul className="space-y-2">
                   {topDonors.map((donor, index) => (
                     <li key={index} className={`flex justify-between border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'} pb-1`}>
                       <div className="flex items-center gap-2">
-                        {/* CORRECTION: <img> -> <Image> */}
                         <Image src={`https://api.dicebear.com/7.x/initials/svg?seed=${donor.name}`} className="w-6 h-6 rounded-full transition-all duration-300 ease-in-out" alt={donor.name} width={24} height={24} />
                         <span>{donor.name}</span>
                       </div>
@@ -595,134 +512,107 @@ export default function AdminDonationsPage() {
             </motion.div>
           )}
 
+          {/* Tableau */}
           {loading ? (
             <div className="space-y-4 animate-pulse">
-              <div className="h-24 bg-gray-800 rounded-xl w-full"></div>
               <div className="h-64 bg-gray-800 rounded-xl w-full"></div>
-              <div className="h-64 bg-gray-800 rounded-xl w-full"></div>
-              <div className="h-48 bg-gray-800 rounded-xl w-full"></div>
             </div>
           ) : (
             <div id="table" className="overflow-x-auto transition-all duration-300 ease-in-out animate-fade-in">
               <table className={`min-w-full rounded-2xl shadow-md divide-y transition-all duration-300 ease-in-out ${darkMode ? 'divide-gray-800 bg-gray-900 text-white' : 'divide-gray-200 bg-white text-gray-900'}`}>
-                <thead
-                  className="sticky top-0 z-20 bg-gradient-to-r from-fuchsia-500 via-orange-400 to-yellow-400 text-white shadow-sm"
-                >
+                <thead className="sticky top-0 z-20 bg-gradient-to-r from-fuchsia-500 via-orange-400 to-yellow-400 text-white shadow-sm">
                   <tr>
-                    <th
-                      onClick={() =>
-                        setSortConfig(prev => ({
-                          key: 'name',
-                          direction: prev?.key === 'name' && prev.direction === 'asc' ? 'desc' : 'asc'
-                        }))
-                      }
-                      className="cursor-pointer hover:underline py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[120px]"
-                    >
-                      Nom {sortConfig?.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    <th onClick={() => handleSort('name')} className="cursor-pointer hover:underline py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[120px]">
+                      Nom {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th
-                      onClick={() =>
-                        setSortConfig(prev => ({
-                          key: 'email',
-                          direction: prev?.key === 'email' && prev.direction === 'asc' ? 'desc' : 'asc'
-                        }))
-                      }
-                      className="cursor-pointer hover:underline py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[180px]"
-                    >
-                      Email {sortConfig?.key === 'email' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    <th onClick={() => handleSort('email')} className="cursor-pointer hover:underline py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[180px]">
+                      Email {sortConfig.key === 'email' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th
-                      onClick={() =>
-                        setSortConfig(prev => ({
-                          key: 'amount',
-                          direction: prev?.key === 'amount' && prev.direction === 'asc' ? 'desc' : 'asc'
-                        }))
-                      }
-                      className="cursor-pointer hover:underline py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[100px]"
-                    >
-                      Montant {sortConfig?.key === 'amount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    <th onClick={() => handleSort('amount')} className="cursor-pointer hover:underline py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[100px]">
+                      Montant {sortConfig.key === 'amount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                     </th>
                     <th className="py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[80px]">Devise</th>
                     <th className="py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[100px]">Statut</th>
-                    {/* AJOUT: Colonne Fréquence */}
-                    <th
-                      onClick={() =>
-                        setSortConfig(prev => ({
-                          key: 'frequency',
-                          direction: prev?.key === 'frequency' && prev.direction === 'asc' ? 'desc' : 'asc'
-                        }))
-                      }
-                      className="cursor-pointer hover:underline py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[100px]"
-                    >
-                      Fréquence {sortConfig?.key === 'frequency' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    <th onClick={() => handleSort('frequency')} className="cursor-pointer hover:underline py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[100px]">
+                      Fréquence {sortConfig.key === 'frequency' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th
-                      onClick={() =>
-                        setSortConfig(prev => ({
-                          key: 'created_at',
-                          direction: prev?.key === 'created_at' && prev.direction === 'asc' ? 'desc' : 'asc'
-                        }))
-                      }
-                      className="cursor-pointer hover:underline py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[140px]"
-                    >
-                      Date {sortConfig?.key === 'created_at' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    <th onClick={() => handleSort('created_at')} className="cursor-pointer hover:underline py-3 px-6 text-left font-semibold whitespace-nowrap min-w-[140px]">
+                      Date {sortConfig.key === 'created_at' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                     </th>
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${darkMode ? 'divide-gray-800 bg-gray-900 text-white' : 'divide-gray-200 bg-white text-gray-900'}`}>
-                  {filteredDonations.slice(0, visibleCount).map((don) => (
+                  {/* CORRECTION: Itération sur 'donations' (déjà paginé) */}
+                  {donations.map((don) => (
                     <tr
                       key={don.id}
                       onClick={() => setSelectedDonation(don)}
-                      className={`cursor-pointer transition-transform duration-200 ease-in-out rounded-xl shadow-sm
-                        ${darkMode ? 'hover:bg-gray-800 bg-gray-900' : 'hover:bg-gray-100 bg-white'}
-                      `}
+                      className={`cursor-pointer transition-transform duration-200 ease-in-out rounded-xl shadow-sm ${darkMode ? 'hover:bg-gray-800 bg-gray-900' : 'hover:bg-gray-100 bg-white'}`}
                     >
                       <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[120px]">{don.name}</td>
                       <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[180px]">{don.email}</td>
                       <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[100px]">€ {don.amount.toFixed(2)}</td>
                       <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[80px]">{don.currency ? don.currency.toUpperCase() : 'N/A'}</td>
                       <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[100px]">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium
-                          ${don.status === 'succeeded' || don.status === 'paid' // 'paid' pour les factures
-                            ? 'bg-lime-100 text-lime-800'
-                            : don.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'}
-                        `}>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${don.status === 'succeeded' || don.status === 'paid' ? 'bg-lime-100 text-lime-800' : don.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
                           {don.status}
                         </span>
                       </td>
-                      {/* AJOUT: Affichage Fréquence */}
                       <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[100px]">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium
-                          ${don.frequency === 'monthly'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'}
-                        `}>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${don.frequency === 'monthly' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
                           {don.frequency === 'monthly' ? 'Mensuel' : 'Unique'}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-sm rounded-xl whitespace-nowrap min-w-[140px]">{new Date(don.created_at).toLocaleString('fr-FR')}</td>
                     </tr>
                   ))}
+                  {donations.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="text-center py-6 text-gray-500">
+                        Aucun don ne correspond à ces filtres.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
-              {visibleCount < filteredDonations.length && (
-                <tr>
-                  <td colSpan={7} className="text-center py-4"> {/* CORRECTION: colSpan 6 -> 7 */}
-                    <div ref={loaderRef} className="text-sm text-gray-500">Chargement en cours...</div>
-                  </td>
-                </tr>
+
+              {/* Pagination Standard */}
+              {totalPages > 1 && (
+                <div className="flex justify-center gap-2 mt-6">
+                  {/* Bouton Précédent */}
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                    disabled={currentPage === 1 || loading}
+                    className="px-3 py-1 rounded border bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    Précédent
+                  </button>
+
+                  {/* Indicateur de page */}
+                  <span className="px-3 py-1 text-gray-400">
+                    Page {currentPage} sur {totalPages}
+                  </span>
+
+                  {/* Bouton Suivant */}
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                    disabled={currentPage === totalPages || loading}
+                    className="px-3 py-1 rounded border bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    Suivant
+                  </button>
+                </div>
               )}
+
+              {/* Modale de détails */}
               {selectedDonation && (
                 <div
                   className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
-                  onClick={() => setSelectedDonation(null)} // AJOUT: Fermeture au clic sur l'arrière-plan
+                  onClick={() => setSelectedDonation(null)}
                 >
                   <div
                     className={`rounded-xl p-6 w-[90%] max-w-lg shadow-xl ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
-                    onClick={(e) => e.stopPropagation()} // Empêche la fermeture au clic sur la modale
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <h3 className="text-lg font-bold mb-2">Détail du don</h3>
                     <p><strong>Nom :</strong> {selectedDonation.name}</p>

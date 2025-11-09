@@ -185,10 +185,10 @@ export function Header() {
                     </a>
                 ))}
             </nav>
-            <div className="hidden lg:flex items-center gap-2">
+            <div className=" lg:flex items-center gap-2">
                 {isSignedIn && <a href="/dashboard" className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 transition">Tableau de bord</a>}
                 <motion.a href="/don" whileHover={{ scale: 1.05 }} className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-blue-600 rounded-full shadow-md">Faire un don</motion.a>
-                {!isSignedIn && <a href="/login" className="px-4 py-2 text-sm font-semibold text-gray-700 hidden">Connexion</a>}
+                {!isSignedIn && <a href="/login" className="px-4 py-2 text-sm font-semibold text-gray-700">Connexion</a>}
                 <UserButton afterSignOutUrl="/" />
             </div>
             <button className="lg:hidden text-gray-700 z-50" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Ouvrir le menu">
