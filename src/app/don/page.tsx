@@ -23,7 +23,6 @@ CheckIcon.displayName = 'CheckIcon';
 // --- Configuration ---
 const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "sb";
 const stripePublicKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!;
-//const stripeSecretKey = process.env.STRIPE_SECRET_KEY!; // Pour référence serveur uniquement
 
 const donationOptions = [
   { id: 'don_25', amount: 25, label: '25€' },

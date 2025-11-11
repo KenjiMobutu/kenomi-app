@@ -3,11 +3,10 @@ import Stripe from 'stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 // MISE À JOUR: Importation du client e-mail
 import { sendDonationConfirmationEmail } from '@/lib/emailClient';
-import { generateDonationPDF } from '@/lib/pdfGenerator';
 
 // Initialisation de Stripe avec la clé secrète
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-06-30.basil', // Utilisation d'une version API récente
+  apiVersion: '2025-06-30.basil', // Utilisation d'une version API compatible avec les types installés
 });
 
 // Clé secrète du Webhook Stripe
@@ -52,8 +51,6 @@ export async function POST(req: NextRequest) {
         const amount = (session.amount_total || 0) / 100;
         const name = session.metadata?.donateur || session.customer_details?.name || 'Donateur Anonyme';
         const email = session.customer_details?.email;
-        const donationDate = new Date(session.created * 1000);
-        const transactionId = session.id;
 
         if (!email) {
           throw new Error('Email du client manquant dans la session Stripe.');
@@ -67,7 +64,7 @@ export async function POST(req: NextRequest) {
           amount: amount,
           currency: session.currency,
           status: session.payment_status,
-          created_at: donationDate.toISOString(),
+          created_at: new Date(session.created * 1000).toISOString(),
           frequency: 'once', // Paiement unique
         });
 
@@ -79,23 +76,12 @@ export async function POST(req: NextRequest) {
           console.log("1 => Donation enregistrée avec succès dans la base de données pour la session:", session.id);
         }
 
-        // 2. MODIFIÉ: Générer le PDF et envoyer l'e-mail
-        const donationDetails = {
+        // 2. MISE À JOUR: Envoyer l'e-mail de confirmation
+        await sendDonationConfirmationEmail({
           email: email,
           name: name,
           amount: amount,
-          frequency: 'once' as const,
-          donationDate: donationDate,
-          transactionId: transactionId
-        };
-
-        // Générer le PDF en mémoire
-        const pdfBytes = await generateDonationPDF(donationDetails);
-
-        // 2. MISE À JOUR: Envoyer l'e-mail de confirmation
-        await sendDonationConfirmationEmail({
-          ...donationDetails,
-          pdfBuffer: pdfBytes
+          frequency: 'once',
         });
 
       } catch (error) {
