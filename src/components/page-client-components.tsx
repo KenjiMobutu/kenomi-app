@@ -1,9 +1,9 @@
+
 'use client';
 
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useInView, AnimatePresence, animate, Variants } from "framer-motion";
-// MODIFIÉ: Ajout de useState, useRef, ReactNode, memo, FormEvent
 import { useEffect, useState, useRef, ReactNode, memo, FormEvent } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { Briefcase, Users2, Heart, ArrowUp, Menu, X , Package, Handshake, Users, Smile } from 'lucide-react';
@@ -187,7 +187,7 @@ export function Header() {
             </nav>
             <div className=" lg:flex items-center gap-2">
                 {isSignedIn && <a href="/dashboard" className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 transition">Tableau de bord</a>}
-                <motion.a href="/don" whileHover={{ scale: 1.05 }} className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-blue-600 rounded-full shadow-md">Faire un don</motion.a>
+                <motion.a href="/don" whileHover={{ scale: 1.05 }} className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-blue-600 rounded-full shadow-md">Don</motion.a>
                 {!isSignedIn && <a href="/login" className="px-4 py-2 text-sm font-semibold text-gray-700">Connexion</a>}
                 <UserButton afterSignOutUrl="/" />
             </div>
@@ -295,8 +295,8 @@ export const Hero = memo(function Hero() {
                 src="/image1.png"
                 alt="Session de formation à la cybersécurité en PME"
                 fill
-                 className="object-contain md:object-cover"
-    sizes="(min-width: 1024px) 560px, (min-width: 768px) 50vw, 100vw"
+                className="object-contain md:object-cover"
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 560px"
                 priority
               />
             </div>
@@ -310,7 +310,7 @@ export const Hero = memo(function Hero() {
 export const About = memo(function About() {
     return (
         <motion.section id="about"
-            className="w-full py-16 sm:py-24 bg-gray-50 px-6 lg:px-8"
+            className="w-full py-16 sm:py-24 bg-gray-50 px-4 sm:px-6 lg:px-8"
             variants={sectionVariants}
             initial="hidden"
             whileInView="visible"
@@ -318,15 +318,16 @@ export const About = memo(function About() {
         >
             <div className="max-w-4xl mx-auto text-center">
                 <h2 className="text-base font-semibold leading-7 text-indigo-600">Notre Modèle</h2>
-                <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                {/* CORRECTION CSS: Suppression de sm:text-3xl qui était en conflit avec sm:text-4xl */}
+                <p className="mt-2 text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl">
                     Le Cercle Vertueux du Numérique en Belgique
                 </p>
-                <div className="mt-16 bg-white p-8 sm:p-12 rounded-2xl shadow-lg text-left">
-                    <h3 className="text-xl font-bold tracking-tight text-gray-900 text-center">Un double volet pour un impact 100% local</h3>
-                    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+                <div className="mt-12 sm:mt-16 bg-white p-6 sm:p-8 lg:p-12 rounded-2xl shadow-lg text-left">
+                    <h3 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 text-center">Un double volet pour un impact 100% local</h3>
+                    <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-2 gap-x-8 lg:gap-x-12 gap-y-8 lg:gap-y-10">
                         <div>
-                            <h4 className="text-lg text-center  font-semibold leading-7 text-gray-800">1. Volet Commercial 💼</h4>
-                            <p className="mt-2 text-base leading-7 text-gray-600 text-justify">
+                            <h4 className="text-base sm:text-lg text-center font-semibold leading-7 text-gray-800">1. Volet Commercial 💼</h4>
+                            <p className="mt-2 text-sm sm:text-base leading-7 text-gray-600 text-justify">
                                 C&apos;est notre moteur économique.
                                 Nous proposons des formations de pointe en <strong> sensibilisation à la cybersécurité et hygiène numérique </strong>
                                 aux particuliers, PME, ASBL et organismes publics.
@@ -334,8 +335,8 @@ export const About = memo(function About() {
                             </p>
                         </div>
                         <div>
-                            <h4 className="text-lg text-center font-semibold leading-7 text-gray-800">2. Volet Social ❤️</h4>
-                            <p className="mt-2 text-base leading-7 text-gray-600 text-justify">
+                            <h4 className="text-base sm:text-lg text-center font-semibold leading-7 text-gray-800">2. Volet Social ❤️</h4>
+                            <p className="mt-2 text-sm sm:text-base leading-7 text-gray-600 text-justify">
                                 Notre raison d&apos;être. Les bénéfices sont réinvestis dans notre programme <strong>
                                 &quot;Tremplin Numérique&quot;</strong> qui offre des &quot;Kits d&apos;Autonomie&quot;
                                 (ordinateur, logiciels, formation) à des jeunes en situation de précarité,
@@ -343,8 +344,8 @@ export const About = memo(function About() {
                             </p>
                         </div>
                     </div>
-                    <div className="mt-10 pt-6 border-t border-gray-200 text-center">
-                        <p className="text-base font-semibold text-gray-700 text-center">
+                    <div className="mt-8 sm:mt-10 pt-6 border-t border-gray-200 text-center">
+                        <p className="text-sm sm:text-base font-semibold text-gray-700 text-center">
                            En choisissant Kenomi, vous n&apos;augmentez pas seulement vos compétences ;
                            vous réalisez un investissement social direct et visible sur votre propre territoire.
                         </p>
@@ -358,28 +359,28 @@ export const About = memo(function About() {
 export const DonationImpact = memo(function DonationImpact() {
     return (
         <motion.section
-            className="w-full py-16 sm:py-24 bg-gray-50 px-6 lg:px-8"
+            className="w-full py-16 sm:py-24 bg-gray-50 px-4 sm:px-6 lg:px-8"
             variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}
         >
-            <section className="py-16 md:py-24" style={{ backgroundImage: "url('cardbg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
-                <div className="container mx-auto px-6 text-center bg-white/90 backdrop-blur-sm p-12 rounded-lg shadow-xl">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-800">Votre Don a un Impact Concret et Local</h2>
-                    <p className="mt-2 text-lg text-gray-600 max-w-2xl mx-auto text-center">Chaque contribution nous aide à réduire la fracture numérique en Belgique. Voyez comment votre don se transforme en action.</p>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
-                        <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
-                            <p className="text-4xl font-extrabold text-blue-700">25 €</p>
-                            <p className="mt-2 text-black font-semibold text-center">Finance une session de sensibilisation à la sécurité pour un senior.</p>
+            <section className="py-12 sm:py-16 md:py-24" style={{ backgroundImage: "url('cardbg.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                <div className="container mx-auto px-4 sm:px-6 text-center bg-white/90 backdrop-blur-sm p-8 sm:p-12 rounded-lg shadow-xl">
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800">Votre Don a un Impact Concret et Local</h2>
+                    <p className="mt-2 text-base sm:text-lg text-gray-600 max-w-2xl mx-auto text-center">Chaque contribution nous aide à réduire la fracture numérique en Belgique. Voyez comment votre don se transforme en action.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mt-8 sm:mt-12">
+                        <div className="bg-blue-50 p-4 sm:p-6 rounded-lg border-2 border-blue-200">
+                            <p className="text-3xl sm:text-4xl font-extrabold text-blue-700">25 €</p>
+                            <p className="mt-2 text-black font-semibold text-center text-sm sm:text-base">Finance une session de sensibilisation à la sécurité pour un senior.</p>
                         </div>
-                        <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
-                            <p className="text-4xl font-extrabold text-blue-700">50 €</p>
-                            <p className="mt-2 text-black font-semibold text-center">Contribue à l&apos;achat d&apos;une licence logicielle pour un kit d&apos;autonomie.</p>
+                        <div className="bg-blue-50 p-4 sm:p-6 rounded-lg border-2 border-blue-200">
+                            <p className="text-3xl sm:text-4xl font-extrabold text-blue-700">50 €</p>
+                            <p className="mt-2 text-black font-semibold text-center text-sm sm:text-base">Contribue à l&apos;achat d&apos;une licence logicielle pour un kit d&apos;autonomie.</p>
                         </div>
-                        <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200 sm:col-span-2 lg:col-span-1">
-                            <p className="text-4xl font-extrabold text-blue-700">150 €</p>
-                            <p className="mt-2 text-black font-semibold text-center">Finance un &quot;Kit d&apos;Autonomie Numérique&quot; complet pour un jeune.</p>
+                        <div className="bg-blue-50 p-4 sm:p-6 rounded-lg border-2 border-blue-200 sm:col-span-2 lg:col-span-1">
+                            <p className="text-3xl sm:text-4xl font-extrabold text-blue-700">150 €</p>
+                            <p className="mt-2 text-black font-semibold text-center text-sm sm:text-base">Finance un &quot;Kit d&apos;Autonomie Numérique&quot; complet pour un jeune.</p>
                         </div>
                     </div>
-                    <a href="/don" className="mt-12 inline-block bg-yellow-400 text-blue-900 px-10 py-4 rounded-full font-bold text-xl hover:bg-yellow-300 transition-transform transform hover:scale-105">
+                    <a href="/don" className="mt-8 sm:mt-12 inline-block bg-yellow-400 text-blue-900 px-8 sm:px-10 py-3 sm:py-4 rounded-full font-bold text-lg sm:text-xl hover:bg-yellow-300 transition-transform transform hover:scale-105">
                         Je Fais un Don
                     </a>
                 </div>
@@ -398,17 +399,18 @@ export const ActionPoles = memo(function ActionPoles() {
     return (
         <motion.section
             id="action-poles"
-            className="w-full py-16 sm:py-24 bg-gray-50 px-6 lg:px-8"
+            className="w-full py-16 sm:py-24 bg-gray-50 px-4 sm:px-6 lg:px-8"
             variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}
         >
             <div className="max-w-7xl mx-auto">
-                <div className="text-center mb-16">
-                    <h2 className="text-xl font-semibold leading-7  text-indigo-600">Nos Pôles d&apos;Action</h2>
-                    <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                <div className="text-center mb-12 sm:mb-16">
+                    <h2 className="text-lg sm:text-xl font-semibold leading-7 text-indigo-600">Nos Pôles d&apos;Action</h2>
+                    {/* CORRECTION CSS: Suppression de sm:text-3xl qui était en conflit avec sm:text-4xl */}
+                    <p className="mt-2 text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl">
                         Des solutions concrètes pour un impact local
                     </p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
                     {solutionsData.map((sol, i) => (
                         <motion.div
                             key={sol.title}
@@ -416,14 +418,14 @@ export const ActionPoles = memo(function ActionPoles() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true, amount: 0.5 }}
                             transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
-                            className="group p-8 bg-white rounded-2xl border border-gray-200/80 hover:shadow-xl hover:-translate-y-2 transition-all duration-300"
+                            className="group p-6 sm:p-8 bg-white rounded-2xl border border-gray-200/80 hover:shadow-xl hover:-translate-y-2 transition-all duration-300"
                         >
                             <div className="flex justify-center mb-4">
                                 <div className={`${iconColors[sol.color as keyof typeof iconColors]} p-3 rounded-lg inline-block`}>
-                                    <sol.icon className="h-8 w-8" />
+                                    <sol.icon className="h-6 w-6 sm:h-8 sm:w-8" />
                                 </div>
                             </div>
-                            <h3 className="text-lg text-center  font-semibold text-gray-900">{sol.title}</h3>
+                            <h3 className="text-base sm:text-lg text-center font-semibold text-gray-900">{sol.title}</h3>
                             <p className="mt-2 text-sm text-gray-600 text-justify">{sol.desc}</p>
                         </motion.div>
                     ))}
@@ -439,24 +441,25 @@ export const TrainingPreviews = memo(function TrainingPreviews() {
   return (
     <motion.section
       id="previews"
-      className="w-full py-16 sm:py-24 bg-white px-6 lg:px-8"
+      className="w-full py-16 sm:py-24 bg-white px-4 sm:px-6 lg:px-8"
       variants={sectionVariants}
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, amount: 0.2 }}
     >
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
+        <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-base font-semibold leading-7 text-indigo-600">Nos Programmes</h2>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+          {/* CORRECTION CSS: Suppression de sm:text-3xl qui était en conflit avec sm:text-4xl */}
+          <p className="mt-2 text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl">
             Un aperçu de nos formations
           </p>
-          <p className="mt-6 max-w-2xl mx-auto text-lg leading-8 text-gray-600 text-center">
+          <p className="mt-4 sm:mt-6 max-w-2xl mx-auto text-base sm:text-lg leading-8 text-gray-600 text-center">
             Chaque programme est conçu sur mesure pour son public, alliant théorie essentielle et pratique concrète.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           {trainingData.map((training) => (
             <TrainingCard
               key={training.id}
@@ -484,16 +487,16 @@ function TrainingCard({ training, onSelect }: { training: Training; onSelect: ()
   return (
     <motion.div
       onClick={onSelect}
-      className="bg-gray-50 rounded-2xl border border-gray-200/80 p-8 flex flex-col cursor-pointer group hover:shadow-2xl hover:border-indigo-300 transition-all duration-300"
+      className="bg-gray-50 rounded-2xl border border-gray-200/80 p-6 sm:p-8 flex flex-col cursor-pointer group hover:shadow-2xl hover:border-indigo-300 transition-all duration-300"
       whileHover={{ y: -8 }}
     >
       <div className={`p-3 rounded-lg inline-block mb-4 ${training.iconColor.replace("text-", "bg-").replace("600", "100")}`}>
-        <Icon className={`h-8 w-8 ${training.iconColor}`} />
+        <Icon className={`h-6 w-6 sm:h-8 sm:w-8 ${training.iconColor}`} />
       </div>
-      <span className="text-sm font-semibold text-indigo-600">{training.targetAudience}</span>
-      <h3 className="text-xl font-semibold text-gray-900 mt-2">{training.title}</h3>
+      <span className="text-xs sm:text-sm font-semibold text-indigo-600">{training.targetAudience}</span>
+      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mt-2">{training.title}</h3>
       <p className="mt-2 text-sm text-gray-600 flex-grow text-justify">{training.shortDesc}</p>
-      <span className="mt-6 text-indigo-600 font-semibold flex items-center group-hover:underline">
+      <span className="mt-4 sm:mt-6 text-indigo-600 font-semibold flex items-center group-hover:underline">
         Voir le contenu
         <span className="ml-2 transition-transform duration-300 group-hover:translate-x-1">&rarr;</span>
       </span>
@@ -526,26 +529,26 @@ function TrainingModal({ training, onClose }: { training: Training; onClose: () 
         transition={{ duration: 0.3, ease: "easeOut" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-lg inline-block ${training.iconColor.replace("text-", "bg-").replace("600", "100")}`}>
-              <Icon className={`h-8 w-8 ${training.iconColor}`} />
+        <div className="flex items-start justify-between p-4 sm:p-6 border-b border-gray-200">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className={`p-2 sm:p-3 rounded-lg inline-block ${training.iconColor.replace("text-", "bg-").replace("600", "100")}`}>
+              <Icon className={`h-6 w-6 sm:h-8 sm:w-8 ${training.iconColor}`} />
             </div>
             <div>
-              <span className="text-sm font-semibold text-indigo-600">{training.targetAudience}</span>
-              <h2 className="text-2xl font-bold text-gray-900">{training.title}</h2>
+              <span className="text-xs sm:text-sm font-semibold text-indigo-600">{training.targetAudience}</span>
+              <h2 className="text-lg sm:text-2xl font-bold text-gray-900">{training.title}</h2>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Fermer">
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
         </div>
 
-        <div className="p-8 overflow-y-auto">
+        <div className="p-4 sm:p-6 lg:p-8 overflow-y-auto">
           {training.fullContent}
         </div>
 
-        <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end gap-4">
+        <div className="p-4 sm:p-6 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 transition"
@@ -555,7 +558,7 @@ function TrainingModal({ training, onClose }: { training: Training; onClose: () 
           <a
             href="#contact"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition"
+            className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition text-center"
           >
             Demander un devis
           </a>
@@ -567,19 +570,20 @@ function TrainingModal({ training, onClose }: { training: Training; onClose: () 
 
 export const Impact = memo(function Impact() {
     return (
-        <motion.section id="impact" className="w-full py-16 sm:py-24 bg-white px-6 lg:px-8"
+        <motion.section id="impact" className="w-full py-16 sm:py-24 bg-white px-4 sm:px-6 lg:px-8"
             variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
             <div className="max-w-7xl mx-auto">
-                <div className="text-center mb-16">
+                <div className="text-center mb-12 sm:mb-16">
                     <h2 className="text-base font-semibold leading-7 text-indigo-600">Nos Résultats</h2>
-                    <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                    {/* CORRECTION CSS: Suppression de sm:text-3xl qui était en conflit avec sm:text-4xl */}
+                    <p className="mt-2 text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl">
                         Notre Impact en Belgique
                     </p>
-                    <p className="mt-6 max-w-2xl mx-auto text-lg leading-8 text-gray-600 text-center">
+                    <p className="mt-4 sm:mt-6 max-w-2xl mx-auto text-base sm:text-lg leading-8 text-gray-600 text-center">
                         Chaque chiffre représente une compétence acquise, un jeune équipé ou un partenariat renforcé sur notre territoire.
                     </p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 text-center">
                     {statsData.map((stat, i) => (
                         <AnimatedStat key={stat.label} {...stat} delay={i * 0.15} />
                     ))}
@@ -604,11 +608,11 @@ function AnimatedStat({ value, label, color, delay = 0 }: { value: number, label
         }
     }, [isInView, value]);
     return (
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.7, ease: "easeOut" }} className="p-6 bg-gray-50 rounded-2xl border border-gray-200/80">
-            <p ref={ref} className={`text-5xl font-extrabold ${color}`}>
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.7, ease: "easeOut" }} className="p-4 sm:p-6 bg-gray-50 rounded-2xl border border-gray-200/80">
+            <p ref={ref} className={`text-3xl sm:text-4xl lg:text-5xl font-extrabold ${color}`}>
                 {count.toLocaleString("fr-BE")}
             </p>
-            <p className="mt-2 text-base font-medium text-gray-700 text-center">{label}</p>
+            <p className="mt-2 text-sm sm:text-base font-medium text-gray-700 text-center">{label}</p>
         </motion.div>
     );
 }
@@ -620,11 +624,11 @@ export const Mission = memo(function Mission() {
         return () => clearInterval(timer);
     }, []);
     return (
-        <motion.section id="mission" className="w-full py-16 sm:py-24 bg-gray-50 px-6 lg:px-8"
+        <motion.section id="mission" className="w-full py-16 sm:py-24 bg-gray-50 px-4 sm:px-6 lg:px-8"
             variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }}>
             <div className="max-w-4xl mx-auto text-center">
-                <h2 className="text-3xl font-bold text-gray-900 mb-6">Rejoignez le Cercle Vertueux</h2>
-                <div className="relative h-48 sm:h-40 mb-10 overflow-hidden">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Rejoignez le Cercle Vertueux</h2>
+                <div className="relative h-40 sm:h-48 mb-8 sm:mb-10 overflow-hidden">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={current}
@@ -649,8 +653,8 @@ export const Mission = memo(function Mission() {
 
 function Testimonial({ name, text }: { name: string; text: string }) {
     return (
-        <div className="flex flex-col items-center justify-center h-full">
-            <p className="text-gray-700 italic text-lg max-w-2xl text-center">&quot;{text}&quot;</p>
+        <div className="flex flex-col items-center justify-center h-full px-4">
+            <p className="text-gray-700 italic text-base sm:text-lg max-w-2xl text-center">&quot;{text}&quot;</p>
             <p className="mt-4 text-sm text-gray-600 font-semibold">{name}</p>
         </div>
     );
@@ -722,11 +726,11 @@ export const Newsletter = memo(function Newsletter() {
     };
 
     return (
-        <motion.section className="w-full py-16 bg-white px-6 lg:px-8"
+        <motion.section className="w-full py-16 bg-white px-4 sm:px-6 lg:px-8"
             variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }}>
-            <div className="max-w-2xl mx-auto text-center bg-gray-100 p-8 sm:p-12 rounded-2xl">
-                <h3 className="text-2xl font-bold text-gray-900">Restez informé·e de notre impact local</h3>
-                <p className="mt-2 text-gray-600 text-center">Recevez les dernières nouvelles de nos projets en Belgique.</p>
+            <div className="max-w-2xl mx-auto text-center bg-gray-100 p-6 sm:p-8 lg:p-12 rounded-2xl">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Restez informé·e de notre impact local</h3>
+                <p className="mt-2 text-sm sm:text-base text-gray-600 text-center">Recevez les dernières nouvelles de nos projets en Belgique.</p>
 
                 {/* Formulaire rendu fonctionnel */}
                 <form onSubmit={handleSubmit} className="mt-6 w-full space-y-4">
@@ -734,7 +738,7 @@ export const Newsletter = memo(function Newsletter() {
                         <input
                             type="email"
                             placeholder="Votre adresse e-mail"
-                            className="flex-grow text-black px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none w-full"
+                            className="flex-grow text-black px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none w-full text-sm sm:text-base"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             disabled={loading}
@@ -744,7 +748,7 @@ export const Newsletter = memo(function Newsletter() {
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             type="submit"
-                            className="px-6 py-3 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                            className="px-6 py-3 rounded-lg bg-indigo-600 text-white font-semibold shadow-sm hover:bg-indigo-700 disabled:opacity-50 text-sm sm:text-base"
                             disabled={loading}
                         >
                             {loading ? "Envoi..." : "S'abonner"}
@@ -753,7 +757,7 @@ export const Newsletter = memo(function Newsletter() {
 
                     {/* Champ de consentement RGPD OBLIGATOIRE */}
                     <div className="text-left">
-                        <label className="flex items-start gap-3 cursor-pointer text-sm text-gray-600">
+                        <label className="flex items-start gap-3 cursor-pointer text-xs sm:text-sm text-gray-600">
                             <input
                                 type="checkbox"
                                 className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
@@ -776,7 +780,7 @@ export const Newsletter = memo(function Newsletter() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className={`text-sm font-medium ${error ? 'text-red-600' : 'text-green-600'}`}
+                                className={`text-xs sm:text-sm font-medium ${error ? 'text-red-600' : 'text-green-600'}`}
                             >
                                 {message}
                             </motion.p>
@@ -798,7 +802,7 @@ export function StickyButtons() {
     }, []);
     const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
     return (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-3">
+        <div className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-50 flex flex-col items-center gap-2 sm:gap-3">
             <AnimatePresence>
                 {isVisible && (
                     <motion.button
@@ -806,20 +810,21 @@ export function StickyButtons() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 10 }}
                         onClick={scrollToTop}
-                        className="h-12 w-12 rounded-full bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-200"
+                        className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-200"
                         aria-label="Remonter en haut"
                     >
-                        <ArrowUp className="h-6 w-6" />
+                        <ArrowUp className="h-5 w-5 sm:h-6 sm:w-6" />
                     </motion.button>
                 )}
             </AnimatePresence>
             <motion.a
                 href="/don"
                 whileHover={{ scale: 1.05 }}
-                className="flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-green-500 to-blue-600 text-white font-bold shadow-xl"
+                className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-3 rounded-full bg-gradient-to-r from-green-500 to-blue-600 text-white font-bold shadow-xl text-sm"
             >
-                <Heart className="h-5 w-5" />
+                <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span className="hidden sm:inline">Faire un don</span>
+                <span className="sm:hidden">Don</span>
             </motion.a>
         </div>
     );
