@@ -3,6 +3,8 @@ import Stripe from 'stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 // MISE À JOUR: Importation du client e-mail
 import { sendDonationConfirmationEmail } from '@/lib/emailClient';
+import {generateDonationPDF} from '@/lib/pdfGenerator';
+
 
 // Initialisation de Stripe avec la clé secrète
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -76,13 +78,29 @@ export async function POST(req: NextRequest) {
           console.log("1 => Donation enregistrée avec succès dans la base de données pour la session:", session.id);
         }
 
-        // 2. MISE À JOUR: Envoyer l'e-mail de confirmation
-        await sendDonationConfirmationEmail({
+        // 2. MISE À JOUR: Générer le PDF et envoyer l'e-mail
+        const donationDate = new Date(session.created * 1000);
+        const transactionId = session.id; // Utiliser l'ID de la facture comme référence
+
+        const donationDetails = {
           email: email,
           name: name,
           amount: amount,
-          frequency: 'once',
+          frequency: 'monthly' as const,
+          donationDate: donationDate,
+          transactionId: transactionId
+        };
+
+        // Générer le PDF en mémoire
+        const pdfBytes = await generateDonationPDF(donationDetails);
+
+        // Envoyer l'e-mail de confirmation avec le PDF
+        await sendDonationConfirmationEmail({
+          ...donationDetails,
+          pdfBuffer: pdfBytes
         });
+
+
 
       } catch (error) {
         console.error('Erreur lors du traitement du webhook (payment):', error);
