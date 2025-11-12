@@ -16,6 +16,16 @@ export interface DonationDetails {
   pdfBuffer?: Uint8Array; // Le PDF généré
 }
 
+// --- AJOUT : Interface pour le nouveau lead B2B ---
+export interface B2BLeadDetails {
+  company: string;
+  name: string;
+  email: string;
+  phone?: string;
+  service: string;
+  message: string;
+}
+
 // --- AJOUT: Définition des types pour l'API Brevo ---
 interface BrevoSender {
   name: string;
@@ -38,6 +48,7 @@ interface BrevoAttachment {
 interface BrevoPayload {
   sender: BrevoSender;
   to: BrevoRecipient[];
+  cc?: BrevoRecipient[]; // Destinataires en copie (optionnel)
   subject: string;
   htmlContent: string;
   attachment?: BrevoAttachment[]; // La pièce jointe est optionnelle
@@ -139,5 +150,91 @@ export async function sendDonationConfirmationEmail(details: DonationDetails) {
   } catch (error) {
     console.error("Erreur réseau lors de la communication avec Brevo:", error);
     throw error;
+  }
+}
+
+/**
+ * Envoie un e-mail de notification de lead B2B à l'équipe Kenomi.
+ * @param details Les informations du formulaire de contact.
+ */
+export async function sendB2BLeadEmail(details: B2BLeadDetails) {
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  const adminEmail = "contact@kenomi.eu"; // OU kenji@kenomi.eu
+
+  if (!brevoApiKey) {
+    console.error("ERREUR: La variable d'environnement BREVO_API_KEY est manquante.");
+    return;
+  }
+
+  const subject = `Nouveau Lead B2B: ${details.company} (${details.service})`;
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+        <h1 style="font-size: 24px; color: #000;">Nouveau Lead Commercial</h1>
+        <p>Une nouvelle demande de devis/contact a été soumise via le site.</p>
+
+        <h2 style="font-size: 20px; border-bottom: 2px solid #eee; padding-bottom: 5px;">Détails du Prospect :</h2>
+        <ul>
+          <li><strong>Entreprise :</strong> ${details.company}</li>
+          <li><strong>Contact :</strong> ${details.name}</li>
+          <li><strong>Email :</strong> <a href="mailto:${details.email}">${details.email}</a></li>
+          <li><strong>Téléphone :</strong> ${details.phone || 'Non fourni'}</li>
+          <li><strong>Service demandé :</strong> ${details.service}</li>
+        </ul>
+
+        <h2 style="font-size: 20px; border-bottom: 2px solid #eee; padding-bottom: 5px;">Message :</h2>
+        <p style="background: #f9f9f9; padding: 15px; border-radius: 5px; white-space: pre-wrap;">
+          ${details.message}
+        </p>
+
+        <br>
+        <p><em>Email envoyé depuis l'API Kenomi.</em></p>
+      </div>
+    </div>
+  `;
+
+  // Charge utile pour l'API Brevo
+  const payload: BrevoPayload = {
+    sender: {
+      name: 'Site Web Kenomi',
+      email: 'kenji@kenomi.eu', // Doit être un expéditeur validé sur Brevo
+    },
+    to: [
+      {
+        email: adminEmail, // Notification interne
+        name: 'Équipe Kenomi',
+      },
+    ],
+    // Nous mettons le demandeur en copie pour confirmation
+    cc: [
+      {
+        email: details.email,
+        name: details.name
+      }
+    ],
+    subject: subject,
+    htmlContent: htmlContent,
+  };
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': brevoApiKey,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Erreur lors de l'envoi de l'e-mail B2B (Brevo):", errorData);
+    } else {
+      console.log(`Notification de lead B2B envoyée avec succès à ${adminEmail}.`);
+    }
+  } catch (error) {
+    console.error("Erreur réseau lors de la communication (B2B Brevo):", error);
   }
 }

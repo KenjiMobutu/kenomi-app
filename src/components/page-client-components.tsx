@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from "next/image";
@@ -7,6 +6,8 @@ import { motion, useInView, AnimatePresence, animate, Variants } from "framer-mo
 import { useEffect, useState, useRef, ReactNode, memo, FormEvent } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { Briefcase, Users2, Heart, ArrowUp, Menu, X , Package, Handshake, Users, Smile } from 'lucide-react';
+// AJOUT: Import nécessaire pour détecter la page actuelle
+import { usePathname } from 'next/navigation';
 
 // --- Types ---
 type Training = {
@@ -23,7 +24,7 @@ type Training = {
 const navLinks = [
   { href: "#about", label: "Notre Modèle" },
   { href: "#action-poles", label: "Nos Actions" },
-  { href: "#previews", label: "Formations" },
+  { href: "/formations", label: "Formations" }, // MODIFIÉ (précédemment "#previews")
   { href: "#impact", label: "Notre Impact" },
   { href: "#mission", label: "La Mission" },
   { href: "#contact", label: "Contact" },
@@ -43,6 +44,7 @@ const solutionsData = [
     { icon: Handshake, title: "Votre Investissement Social Direct", desc: "Chaque formation achetée finance directement notre programme social. Un impact concret et visible sur votre territoire.", color: "red" }
   ];
 
+// ... (trainingData et testimonialsData restent inchangés) ...
 const trainingData: Training[] = [
   {
     id: "pro",
@@ -120,23 +122,33 @@ const testimonialsData = [
 // --- Custom Hooks ---
 const useScrollSpy = (ids: string[], options: IntersectionObserverInit) => {
     const [activeId, setActiveId] = useState<string>("");
+
     useEffect(() => {
+        // CORRECTION: Ne rien faire si la liste des IDs est vide (ex: sur les pages autres que l'accueil)
+        if (ids.length === 0) {
+            setActiveId(""); // Réinitialiser l'ID actif
+            return;
+        }
+
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) setActiveId(entry.target.id);
             });
         }, options);
+
         ids.forEach(id => {
             const element = document.getElementById(id);
             if (element) observer.observe(element);
         });
+
         return () => {
             ids.forEach(id => {
                 const element = document.getElementById(id);
                 if (element) observer.unobserve(element);
             });
         };
-    }, [ids, options]);
+    }, [ids, options]); // 'ids' est maintenant une dépendance clé
+
     return activeId;
 };
 
@@ -154,7 +166,18 @@ const sectionVariants: Variants = {
 
 export function Header() {
     const { isSignedIn, user } = useUser();
-    const activeSection = useScrollSpy(navLinks.map(l => l.href.substring(1)), { rootMargin: "-30% 0px -70% 0px" });
+
+    // --- DÉBUT DE LA CORRECTION MAJEURE ---
+    const pathname = usePathname();
+    const isHomePage = pathname === '/';
+
+    // 1. Le ScrollSpy ne doit être actif QUE sur la page d'accueil
+    const activeSection = useScrollSpy(
+        isHomePage ? navLinks.map(l => l.href.startsWith('#') ? l.href.substring(1) : '') : [],
+        { rootMargin: "-30% 0px -70% 0px" }
+    );
+    // --- FIN DE LA CORRECTION MAJEURE ---
+
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     useEffect(() => {
@@ -168,27 +191,68 @@ export function Header() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // --- NOUVELLE FONCTION HELPER ---
+    // Détermine le Href correct en fonction de la page actuelle
+    const getLinkHref = (href: string) => {
+      // Si ce n'est pas un lien d'ancre (comme /formations), le retourner tel quel
+      if (!href.startsWith('#')) {
+        return href;
+      }
+      // Si nous sommes sur la homepage, retourner l'ancre seule.
+      // Sinon, préfixer avec '/' pour retourner à l'accueil.
+      return isHomePage ? href : `/${href}`;
+    };
+
+    // Détermine si un lien est "actif"
+    const getIsActive = (href: string) => {
+        // Pour les ancres (ex: #about)
+        if (href.startsWith('#')) {
+            // L'état actif ne fonctionne que sur la page d'accueil
+            return isHomePage && activeSection === href.substring(1);
+        }
+        // Pour les pages complètes (ex: /formations)
+        return pathname === href;
+    };
+    // --- FIN HELPER ---
+
+
     return (
         <header className="w-full px-4 sm:px-6 py-3 flex justify-between items-center shadow-sm sticky top-0 bg-white/95 z-50">
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, ease: "easeOut" }}>
-                <a href="#" aria-label="Page d'accueil">
+                {/* CORRECTION: Toujours utiliser <Link> et pointer vers la racine "/" */}
+                <Link href="/" aria-label="Page d'accueil">
                     <Image src="/noBgColor.png" alt="Kenomi Logo" width={180} height={30} priority />
-                </a>
+                </Link>
             </motion.div>
             <nav className="hidden lg:flex items-center gap-6 text-gray-600 font-medium text-sm">
-                {navLinks.map(link => (
-                    <a key={link.href} href={link.href} className={`relative hover:text-indigo-600 transition-colors ${activeSection === link.href.substring(1) ? "text-indigo-600 font-semibold" : ""}`}>
-                        {link.label}
-                        {activeSection === link.href.substring(1) && (
-                            <motion.div className="absolute -bottom-1.5 left-0 right-0 h-0.5 bg-indigo-600" layoutId="underline" />
-                        )}
-                    </a>
-                ))}
+
+                {/* --- MODIFICATION DE LA LOGIQUE DE LIEN --- */}
+                {navLinks.map(link => {
+                    const href = getLinkHref(link.href);
+                    const isActive = getIsActive(link.href);
+
+                    return (
+                        <Link // <-- Utiliser Link au lieu de <a>
+                          key={link.href}
+                          href={href}
+                          className={`relative hover:text-indigo-600 transition-colors ${
+                            isActive ? "text-indigo-600 font-semibold" : ""
+                          }`}
+                        >
+                            {link.label}
+                            {isActive && (
+                                <motion.div className="absolute -bottom-1.5 left-0 right-0 h-0.5 bg-indigo-600" layoutId="underline" />
+                            )}
+                        </Link>
+                    );
+                })}
+                {/* --- FIN MODIFICATION --- */}
+
             </nav>
             <div className=" lg:flex items-center gap-2">
-                {isSignedIn && <a href="/dashboard" className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 transition">Tableau de bord</a>}
+                {isSignedIn && <Link href="/dashboard" className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 transition">Tableau de bord</Link>}
                 <motion.a href="/don" whileHover={{ scale: 1.05 }} className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-blue-600 rounded-full shadow-md">Don</motion.a>
-                {!isSignedIn && <a href="/login" className="px-4 py-2 text-sm font-semibold text-gray-700">Connexion</a>}
+                {!isSignedIn && <Link href="/login" className="px-4 py-2 text-sm font-semibold text-gray-700">Connexion</Link>}
                 <UserButton afterSignOutUrl="/" />
             </div>
             <button className="lg:hidden text-gray-700 z-50" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Ouvrir le menu">
@@ -214,14 +278,25 @@ export function Header() {
                                 )}
                             </div>
                             <nav className="flex flex-col gap-6 mt-8 text-lg font-medium text-gray-700">
+
+                                {/* --- MODIFICATION MENU MOBILE --- */}
                                 {navLinks.map(link => (
-                                    <a key={link.href} href={link.href} onClick={() => setIsMenuOpen(false)} className="hover:text-indigo-600">{link.label}</a>
+                                    <Link // <-- Utiliser Link au lieu de <a>
+                                      key={link.href}
+                                      href={getLinkHref(link.href)} // <-- Utiliser le helper
+                                      onClick={() => setIsMenuOpen(false)}
+                                      className="hover:text-indigo-600"
+                                    >
+                                        {link.label}
+                                    </Link>
                                 ))}
+                                {/* --- FIN MODIFICATION --- */}
+
                             </nav>
                             <div className="mt-auto flex flex-col gap-4">
-                                {isSignedIn && <a href="/dashboard" className="w-full text-center px-4 py-3 font-semibold text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 transition">Tableau de bord</a>}
+                                {isSignedIn && <Link href="/dashboard" className="w-full text-center px-4 py-3 font-semibold text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 transition">Tableau de bord</Link>}
                                 <motion.a href="/don" whileHover={{ scale: 1.05 }} className="w-full text-center px-4 py-3 font-semibold text-white bg-gradient-to-r from-green-500 to-blue-600 rounded-full shadow-md">Faire un don</motion.a>
-                                {!isSignedIn && <a href="/login" className="w-full text-center px-4 py-3 font-semibold text-gray-700 hidden">Connexion</a>}
+                                {!isSignedIn && <Link href="/login" className="w-full text-center px-4 py-3 font-semibold text-gray-700 hidden">Connexion</Link>}
                             </div>
                         </motion.div>
                         <motion.div
@@ -440,7 +515,7 @@ export const TrainingPreviews = memo(function TrainingPreviews() {
 
   return (
     <motion.section
-      id="previews"
+      id="previews" // L'ID reste ici pour le scrollspy de la page d'accueil
       className="w-full py-16 sm:py-24 bg-white px-4 sm:px-6 lg:px-8"
       variants={sectionVariants}
       initial="hidden"
@@ -555,13 +630,14 @@ function TrainingModal({ training, onClose }: { training: Training; onClose: () 
           >
             Fermer
           </button>
-          <a
-            href="#contact"
+          {/* MODIFICATION: Lien vers la nouvelle page de contact B2B */}
+          <Link
+            href="/formations#contact-form"
             onClick={onClose}
             className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition text-center"
           >
             Demander un devis
-          </a>
+          </Link>
         </div>
       </motion.div>
     </motion.div>
@@ -643,7 +719,8 @@ export const Mission = memo(function Mission() {
                     </AnimatePresence>
                 </div>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
-                    <motion.a whileHover={{ scale: 1.05, y: -2 }} href="#contact" className="px-6 py-3 bg-gradient-to-r from-green-500 to-blue-600 text-white rounded-full font-semibold shadow-md">Devenir partenaire</motion.a>
+                    {/* MODIFICATION: Lien vers la nouvelle page de contact B2B */}
+                    <motion.a whileHover={{ scale: 1.05, y: -2 }} href="/formations#contact-form" className="px-6 py-3 bg-gradient-to-r from-green-500 to-blue-600 text-white rounded-full font-semibold shadow-md">Devenir partenaire</motion.a>
                     <motion.a whileHover={{ scale: 1.05, y: -2 }} href="/don" className="px-6 py-3 bg-white text-gray-800 border border-gray-300 rounded-full font-semibold shadow-sm">Faire un don</motion.a>
                 </div>
             </div>
