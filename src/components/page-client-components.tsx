@@ -331,21 +331,21 @@ export const Hero = memo(function Hero() {
                 className="mx-auto md:mx-0"
               />
             <h1 className="text-4xl md:text-5xl font-extrabold text-black mb-4 drop-shadow-[2px_2px_4px_rgba(0,0,0,0.35)]">
-              Ensemble contre les pièges du numérique.
+              Formez-vous contre les pièges du numérique.
             </h1>
             <p className="text-xl text-black text-justify mb-8">
-              Kenomi renforce le tissu social et économique en Belgique.
+              Grâce à ses formations, Kenomi renforce le tissu social et économique en Belgique.
               Nous sensibilisons à la cybersécurité et réinvestissons nos bénéfices
-              pour l&apos;autonomie des jeunes.
+              pour l&apos;autonomie numérique des jeunes et des seniors.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
               <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.95 }}>
                 <Link
-                  href="#about"
-                  aria-label="Découvrir notre mission"
+                  href="formations"
+                  aria-label="Découvrir nos formations"
                   className="px-8 py-3 bg-gradient-to-r from-green-500 to-blue-600 text-white rounded-full font-semibold shadow-lg text-center block"
                 >
-                  Découvrir notre mission
+                  Découvrir nos formations
                 </Link>
               </motion.div>
               <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.95 }}>

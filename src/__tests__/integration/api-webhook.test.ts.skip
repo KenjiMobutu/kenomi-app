@@ -1,0 +1,348 @@
+import { POST } from '@/app/api/webhook/route'
+import { NextRequest } from 'next/server'
+import Stripe from 'stripe'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { sendDonationConfirmationEmail } from '@/lib/emailClient'
+import { generateDonationPDF } from '@/lib/pdfGenerator'
+
+// Mock dependencies
+jest.mock('@/lib/supabaseAdmin')
+jest.mock('@/lib/emailClient')
+jest.mock('@/lib/pdfGenerator')
+jest.mock('stripe')
+
+describe('API Route: /api/webhook (Stripe)', () => {
+  let mockStripe: jest.Mocked<Stripe>
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+
+    // Mock Stripe constructor and methods
+    mockStripe = {
+      webhooks: {
+        constructEvent: jest.fn(),
+      },
+      subscriptions: {
+        retrieve: jest.fn(),
+      },
+      checkout: {
+        sessions: {
+          retrieve: jest.fn(),
+        },
+      },
+    } as unknown as jest.Mocked<Stripe>
+
+    ;(Stripe as unknown as jest.Mock).mockReturnValue(mockStripe)
+  })
+
+  describe('Signature Verification', () => {
+    it('should return 400 if signature verification fails', async () => {
+      mockStripe.webhooks.constructEvent.mockImplementation(() => {
+        throw new Error('Invalid signature')
+      })
+
+      const request = new NextRequest('http://localhost:3000/api/webhook', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'invalid_signature',
+        },
+        body: JSON.stringify({}),
+      })
+
+      const response = await POST(request)
+
+      expect(response.status).toBe(400)
+      const text = await response.text()
+      expect(text).toContain('Webhook Error')
+    })
+  })
+
+  describe('checkout.session.completed (One-time payment)', () => {
+    it('should process one-time payment successfully', async () => {
+      const mockSession: Stripe.Checkout.Session = {
+        id: 'cs_test_123',
+        mode: 'payment',
+        payment_status: 'paid',
+        amount_total: 10000, // 100.00 EUR
+        currency: 'eur',
+        customer_details: {
+          email: 'donor@example.com',
+          name: 'John Doe',
+        },
+        metadata: {
+          donateur: 'John Doe',
+        },
+        created: Math.floor(Date.now() / 1000),
+      } as Stripe.Checkout.Session
+
+      const mockEvent: Stripe.Event = {
+        id: 'evt_test_123',
+        type: 'checkout.session.completed',
+        data: {
+          object: mockSession,
+        },
+      } as Stripe.Event
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(mockEvent)
+
+      const mockInsert = jest.fn().mockResolvedValue({ error: null })
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue({
+        insert: mockInsert,
+      })
+
+      ;(generateDonationPDF as jest.Mock).mockResolvedValue(Buffer.from('pdf'))
+      ;(sendDonationConfirmationEmail as jest.Mock).mockResolvedValue(undefined)
+
+      const request = new NextRequest('http://localhost:3000/api/webhook', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'valid_signature',
+        },
+        body: JSON.stringify(mockEvent),
+      })
+
+      const response = await POST(request)
+
+      expect(response.status).toBe(200)
+      expect(mockInsert).toHaveBeenCalledWith({
+        stripe_session_id: 'cs_test_123',
+        name: 'John Doe',
+        email: 'donor@example.com',
+        amount: 100,
+        currency: 'eur',
+        status: 'paid',
+        created_at: expect.any(String),
+        frequency: 'once',
+      })
+      expect(generateDonationPDF).toHaveBeenCalled()
+      expect(sendDonationConfirmationEmail).toHaveBeenCalled()
+    })
+
+    it('should return 500 if email is missing', async () => {
+      const mockSession: Stripe.Checkout.Session = {
+        id: 'cs_test_123',
+        mode: 'payment',
+        payment_status: 'paid',
+        amount_total: 10000,
+        currency: 'eur',
+        customer_details: {
+          email: null,
+          name: 'John Doe',
+        },
+        metadata: {},
+        created: Math.floor(Date.now() / 1000),
+      } as unknown as Stripe.Checkout.Session
+
+      const mockEvent: Stripe.Event = {
+        id: 'evt_test_123',
+        type: 'checkout.session.completed',
+        data: {
+          object: mockSession,
+        },
+      } as Stripe.Event
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(mockEvent)
+
+      const request = new NextRequest('http://localhost:3000/api/webhook', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'valid_signature',
+        },
+        body: JSON.stringify(mockEvent),
+      })
+
+      const response = await POST(request)
+
+      expect(response.status).toBe(500)
+    })
+
+    it('should return 500 if database insert fails', async () => {
+      const mockSession: Stripe.Checkout.Session = {
+        id: 'cs_test_123',
+        mode: 'payment',
+        payment_status: 'paid',
+        amount_total: 10000,
+        currency: 'eur',
+        customer_details: {
+          email: 'donor@example.com',
+          name: 'John Doe',
+        },
+        metadata: {},
+        created: Math.floor(Date.now() / 1000),
+      } as Stripe.Checkout.Session
+
+      const mockEvent: Stripe.Event = {
+        id: 'evt_test_123',
+        type: 'checkout.session.completed',
+        data: {
+          object: mockSession,
+        },
+      } as Stripe.Event
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(mockEvent)
+
+      const mockInsert = jest.fn().mockResolvedValue({
+        error: { message: 'Database error' },
+      })
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue({
+        insert: mockInsert,
+      })
+
+      const request = new NextRequest('http://localhost:3000/api/webhook', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'valid_signature',
+        },
+        body: JSON.stringify(mockEvent),
+      })
+
+      const response = await POST(request)
+
+      expect(response.status).toBe(500)
+    })
+  })
+
+  describe('invoice.paid (Subscription payment)', () => {
+    it('should process subscription payment successfully', async () => {
+      const mockInvoice: Stripe.Invoice = {
+        id: 'in_test_123',
+        billing_reason: 'subscription_create',
+        status: 'paid',
+        amount_paid: 5000, // 50.00 EUR
+        currency: 'eur',
+        customer_email: 'subscriber@example.com',
+        customer_name: 'Jane Smith',
+        created: Math.floor(Date.now() / 1000),
+        lines: {
+          data: [
+            {
+              subscription: 'sub_test_123',
+            },
+          ],
+        },
+      } as unknown as Stripe.Invoice
+
+      const mockEvent: Stripe.Event = {
+        id: 'evt_test_123',
+        type: 'invoice.paid',
+        data: {
+          object: mockInvoice,
+        },
+      } as Stripe.Event
+
+      const mockSubscription: Stripe.Subscription = {
+        id: 'sub_test_123',
+        metadata: {
+          checkout_session_id: 'cs_test_456',
+        },
+      } as Stripe.Subscription
+
+      const mockCheckoutSession: Stripe.Checkout.Session = {
+        id: 'cs_test_456',
+        metadata: {
+          donateur: 'Jane Smith',
+        },
+      } as Stripe.Checkout.Session
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(mockEvent)
+      mockStripe.subscriptions.retrieve.mockResolvedValue(mockSubscription)
+      mockStripe.checkout.sessions.retrieve.mockResolvedValue(mockCheckoutSession)
+
+      const mockInsert = jest.fn().mockResolvedValue({ error: null })
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue({
+        insert: mockInsert,
+      })
+
+      ;(sendDonationConfirmationEmail as jest.Mock).mockResolvedValue(undefined)
+
+      const request = new NextRequest('http://localhost:3000/api/webhook', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'valid_signature',
+        },
+        body: JSON.stringify(mockEvent),
+      })
+
+      const response = await POST(request)
+
+      expect(response.status).toBe(200)
+      expect(mockInsert).toHaveBeenCalledWith({
+        stripe_session_id: 'cs_test_456',
+        name: 'Jane Smith',
+        email: 'subscriber@example.com',
+        amount: 50,
+        currency: 'eur',
+        status: 'succeeded',
+        created_at: expect.any(String),
+        frequency: 'monthly',
+      })
+      expect(sendDonationConfirmationEmail).toHaveBeenCalled()
+    })
+
+    it('should ignore invoice.paid if not subscription_create', async () => {
+      const mockInvoice: Stripe.Invoice = {
+        id: 'in_test_123',
+        billing_reason: 'subscription_cycle', // Not first payment
+        status: 'paid',
+        lines: {
+          data: [
+            {
+              subscription: 'sub_test_123',
+            },
+          ],
+        },
+      } as unknown as Stripe.Invoice
+
+      const mockEvent: Stripe.Event = {
+        id: 'evt_test_123',
+        type: 'invoice.paid',
+        data: {
+          object: mockInvoice,
+        },
+      } as Stripe.Event
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(mockEvent)
+
+      const request = new NextRequest('http://localhost:3000/api/webhook', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'valid_signature',
+        },
+        body: JSON.stringify(mockEvent),
+      })
+
+      const response = await POST(request)
+
+      expect(response.status).toBe(200)
+      expect(supabaseAdmin.from).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Unknown event types', () => {
+    it('should return 200 for unhandled event types', async () => {
+      const mockEvent: Stripe.Event = {
+        id: 'evt_test_123',
+        type: 'customer.created',
+        data: {
+          object: {},
+        },
+      } as unknown as Stripe.Event
+
+      mockStripe.webhooks.constructEvent.mockReturnValue(mockEvent)
+
+      const request = new NextRequest('http://localhost:3000/api/webhook', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'valid_signature',
+        },
+        body: JSON.stringify(mockEvent),
+      })
+
+      const response = await POST(request)
+
+      expect(response.status).toBe(200)
+      const json = await response.json()
+      expect(json.received).toBe(true)
+    })
+  })
+})

@@ -1,7 +1,7 @@
 import { type Metadata } from 'next'
 import {
   ClerkProvider,
-  
+
 } from '@clerk/nextjs'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
@@ -32,6 +32,12 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
+        <head>
+          <link rel="dns-prefetch" href="https://api.stripe.com" />
+          <link rel="dns-prefetch" href="https://api.paypal.com" />
+          <link rel="dns-prefetch" href="https://api.brevo.com" />
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+        </head>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           {children}
         </body>

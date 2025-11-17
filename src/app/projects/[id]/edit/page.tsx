@@ -117,6 +117,7 @@ export default function EditProjectPage() {
           <div>
             <label className="block mb-1 font-medium">Titre</label>
             <input
+              title='title'
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -126,6 +127,7 @@ export default function EditProjectPage() {
           <div>
             <label className="block mb-1 font-medium">Description</label>
             <textarea
+              title='description'
               rows={5}
               value={description}
               onChange={(e) => setDescription(e.target.value)}

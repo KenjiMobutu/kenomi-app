@@ -1,0 +1,198 @@
+import { generateDonationPDF } from '@/lib/pdfGenerator'
+import { PDFDocument } from 'pdf-lib'
+
+// Mock pdf-lib
+jest.mock('pdf-lib', () => ({
+  PDFDocument: {
+    create: jest.fn(),
+  },
+  rgb: jest.fn((r, g, b) => ({ r, g, b })),
+  StandardFonts: {
+    Helvetica: 'Helvetica',
+    HelveticaBold: 'Helvetica-Bold',
+  },
+}))
+
+describe('PDF Generator', () => {
+  let mockPDFDoc: any
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+
+    // Mock PDF document methods
+    mockPDFDoc = {
+      addPage: jest.fn().mockReturnThis(),
+      embedFont: jest.fn().mockResolvedValue({
+        name: 'MockFont',
+      }),
+      save: jest.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+      getPages: jest.fn().mockReturnValue([
+        {
+          getWidth: jest.fn().mockReturnValue(595),
+          getHeight: jest.fn().mockReturnValue(842),
+          drawText: jest.fn(),
+          drawRectangle: jest.fn(),
+        },
+      ]),
+    }
+
+    ;(PDFDocument.create as jest.Mock).mockResolvedValue(mockPDFDoc)
+  })
+
+  describe('generateDonationPDF', () => {
+    const validDonationDetails = {
+      email: 'donor@example.com',
+      name: 'John Doe',
+      amount: 100,
+      frequency: 'once' as const,
+      donationDate: new Date('2024-01-15'),
+      transactionId: 'txn_123456',
+    }
+
+    it('should generate a PDF successfully', async () => {
+      const result = await generateDonationPDF(validDonationDetails)
+
+      expect(PDFDocument.create).toHaveBeenCalled()
+      expect(mockPDFDoc.addPage).toHaveBeenCalled()
+      expect(mockPDFDoc.save).toHaveBeenCalled()
+      expect(result).toBeInstanceOf(Uint8Array)
+    })
+
+    it('should embed required fonts', async () => {
+      await generateDonationPDF(validDonationDetails)
+
+      expect(mockPDFDoc.embedFont).toHaveBeenCalledWith('Helvetica')
+      expect(mockPDFDoc.embedFont).toHaveBeenCalledWith('Helvetica-Bold')
+    })
+
+    it('should draw donor name on the PDF', async () => {
+      await generateDonationPDF(validDonationDetails)
+
+      const pages = mockPDFDoc.getPages()
+      const firstPage = pages[0]
+
+      expect(firstPage.drawText).toHaveBeenCalledWith(
+        expect.stringContaining('John Doe'),
+        expect.any(Object)
+      )
+    })
+
+    it('should draw donation amount on the PDF', async () => {
+      await generateDonationPDF(validDonationDetails)
+
+      const pages = mockPDFDoc.getPages()
+      const firstPage = pages[0]
+
+      expect(firstPage.drawText).toHaveBeenCalledWith(
+        expect.stringContaining('100'),
+        expect.any(Object)
+      )
+    })
+
+    it('should draw transaction ID on the PDF', async () => {
+      await generateDonationPDF(validDonationDetails)
+
+      const pages = mockPDFDoc.getPages()
+      const firstPage = pages[0]
+
+      expect(firstPage.drawText).toHaveBeenCalledWith(
+        expect.stringContaining('txn_123456'),
+        expect.any(Object)
+      )
+    })
+
+    it('should format date correctly', async () => {
+      await generateDonationPDF(validDonationDetails)
+
+      const pages = mockPDFDoc.getPages()
+      const firstPage = pages[0]
+
+      // Check that a date is drawn (format may vary)
+      const drawTextCalls = firstPage.drawText.mock.calls
+      const hasDateCall = drawTextCalls.some((call: any) =>
+        call[0].includes('2024') || call[0].includes('15')
+      )
+
+      expect(hasDateCall).toBe(true)
+    })
+
+    it('should handle monthly frequency', async () => {
+      const monthlyDonation = {
+        ...validDonationDetails,
+        frequency: 'monthly' as const,
+      }
+
+      await generateDonationPDF(monthlyDonation)
+
+      const pages = mockPDFDoc.getPages()
+      const firstPage = pages[0]
+
+      expect(firstPage.drawText).toHaveBeenCalledWith(
+        expect.stringContaining('mensuel'),
+        expect.any(Object)
+      )
+    })
+
+    it('should handle one-time frequency', async () => {
+      await generateDonationPDF(validDonationDetails)
+
+      const pages = mockPDFDoc.getPages()
+      const firstPage = pages[0]
+
+      expect(firstPage.drawText).toHaveBeenCalledWith(
+        expect.stringContaining('unique'),
+        expect.any(Object)
+      )
+    })
+
+    it('should draw organization information', async () => {
+      await generateDonationPDF(validDonationDetails)
+
+      const pages = mockPDFDoc.getPages()
+      const firstPage = pages[0]
+
+      const drawTextCalls = firstPage.drawText.mock.calls
+      const hasOrgInfo = drawTextCalls.some((call: any) =>
+        call[0].includes('Kenomi') || call[0].includes('ASBL')
+      )
+
+      expect(hasOrgInfo).toBe(true)
+    })
+
+    it('should handle errors gracefully', async () => {
+      ;(PDFDocument.create as jest.Mock).mockRejectedValue(new Error('PDF creation failed'))
+
+      await expect(generateDonationPDF(validDonationDetails)).rejects.toThrow('PDF creation failed')
+    })
+
+    it('should handle large amounts correctly', async () => {
+      const largeDonation = {
+        ...validDonationDetails,
+        amount: 999999.99,
+      }
+
+      const result = await generateDonationPDF(largeDonation)
+
+      expect(result).toBeInstanceOf(Uint8Array)
+
+      const pages = mockPDFDoc.getPages()
+      const firstPage = pages[0]
+
+      expect(firstPage.drawText).toHaveBeenCalledWith(
+        expect.stringContaining('999999'),
+        expect.any(Object)
+      )
+    })
+
+    it('should handle special characters in name', async () => {
+      const specialCharDonation = {
+        ...validDonationDetails,
+        name: 'François O\'Reilly-Müller',
+      }
+
+      const result = await generateDonationPDF(specialCharDonation)
+
+      expect(result).toBeInstanceOf(Uint8Array)
+    })
+  })
+})

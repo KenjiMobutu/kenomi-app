@@ -2,7 +2,7 @@
 import { supabaseAdmin } from './supabaseAdmin';
 
 // --- Interface pour les options de dons ---
-interface GetDonationsOptions {
+export interface GetDonationsOptions {
   page?: number;
   pageSize?: number;
   search?: string;
@@ -49,6 +49,143 @@ function applyDonationFilters(
   return query;
 }
 
+// --- FONCTIONS REFACTORISÉES ---
+
+/**
+ * Récupère les statistiques globales (Total, Compte, Moyenne).
+ */
+export async function getDonationStats(options: GetDonationsOptions = {}) {
+  try {
+    const query = applyDonationFilters(
+      // MODIFIÉ : Sélection de 'amount' et 'email'
+      supabaseAdmin.from('donations').select('amount, email'),
+      options
+    );
+
+    const { data: statsData, error: statsError } = await query;
+    if (statsError) throw statsError;
+
+    // MODIFIÉ : Ajout de types explicites
+    const amounts = (statsData || []).map((d: { amount: number }) => d.amount);
+    const total = amounts.reduce((sum: number, a: number) => sum + a, 0);
+    const count = amounts.length;
+    const average = count > 0 ? total / count : 0;
+
+    // MODIFIÉ : Ajout de types explicites
+    const uniqueCount = new Set((statsData || []).map((d: { email: string }) => d.email)).size;
+
+    return { total, count, average, uniqueCount };
+  } catch (error) {
+    console.error('Erreur dans getDonationStats:', error);
+    throw error;
+  }
+}
+
+/**
+ * Récupère les données pour les graphiques mensuels.
+ */
+export async function getDonationChartData(options: GetDonationsOptions = {}) {
+  try {
+    const query = applyDonationFilters(
+      supabaseAdmin.from('donations').select('created_at, amount'),
+      options
+    );
+    const { data: chartData, error: chartError } = await query;
+    if (chartError) throw chartError;
+
+    const monthlyMap = new Map<string, { total: number; count: number }>();
+    (chartData || []).forEach((don: { created_at: string | number | Date; amount: number; }) => {
+      const date = new Date(don.created_at);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const existing = monthlyMap.get(key) || { total: 0, count: 0 };
+      existing.total += don.amount;
+      existing.count += 1;
+      monthlyMap.set(key, existing);
+    });
+
+    const sorted = [...monthlyMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+    return {
+      labels: sorted.map(([key]) => new Date(`${key}-02`).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })),
+      amountData: sorted.map(([, value]) => value.total),
+      countData: sorted.map(([, value]) => value.count),
+    };
+  } catch (error) {
+    console.error('Erreur dans getDonationChartData:', error);
+    throw error;
+  }
+}
+
+/**
+ * Récupère les 5 meilleurs donateurs.
+ */
+export async function getTopDonors(options: GetDonationsOptions = {}) {
+   try {
+    const query = applyDonationFilters(
+      supabaseAdmin.from('donations').select('name, email, amount'),
+      options
+    );
+    const { data: donorsData, error: donorsError } = await query;
+    if (donorsError) throw donorsError;
+
+    const donorMap = new Map<string, { name: string, email: string, total: number }>();
+    (donorsData || []).forEach((d: { email?: string | null; name?: string | null; amount?: number }) => {
+      const key = d.email;
+      if (!key) return;
+      if (!donorMap.has(key)) {
+        donorMap.set(key, { name: d.name || 'Anonyme', email: d.email as string, total: 0 });
+      }
+      donorMap.get(key)!.total += d.amount ?? 0;
+    });
+
+    return [...donorMap.values()].sort((a, b) => b.total - a.total).slice(0, 5);
+   } catch (error) {
+     console.error('Erreur dans getTopDonors:', error);
+    throw error;
+   }
+}
+
+/**
+ * Récupère les données paginées pour le tableau.
+ */
+export async function getPaginatedDonations(options: GetDonationsOptions = {}) {
+  const {
+    page = 1,
+    pageSize = 20,
+    sortKey = 'created_at',
+    sortDirection = 'desc',
+  } = options;
+
+  try {
+    const paginatedQuery = applyDonationFilters(
+      supabaseAdmin.from('donations').select('*'),
+      options
+    )
+      .order(sortKey, { ascending: sortDirection === 'asc' })
+      .range((page - 1) * pageSize, page * pageSize - 1);
+
+    const countQuery = applyDonationFilters(
+      supabaseAdmin.from('donations').select('*', { count: 'exact', head: true }),
+      options
+    );
+
+    const [paginatedResult, countResult] = await Promise.all([
+      paginatedQuery,
+      countQuery
+    ]);
+
+    if (paginatedResult.error) throw paginatedResult.error;
+    if (countResult.error) throw countResult.error;
+
+    return {
+      donations: paginatedResult.data ?? [],
+      totalCount: countResult.count ?? 0,
+    };
+  } catch (error) {
+    console.error('Erreur dans getPaginatedDonations:', error);
+    throw error;
+  }
+}
+
 /**
  * Récupère les données agrégées et paginées pour le tableau de bord des dons.
  */
@@ -82,8 +219,8 @@ export async function getDonationsData(options: GetDonationsOptions = {}) {
 
     if (statsError) throw statsError;
 
-    const amounts = (statsData || []).map(d => d.amount);
-    const total = amounts.reduce((sum, a) => sum + a, 0);
+    const amounts = (statsData || []).map(d => Number(d.amount) || 0);
+    const total = amounts.reduce((sum: number, a: number) => sum + a, 0);
     const count = amounts.length;
     const average = count > 0 ? total / count : 0;
     const stats = { total, count, average };
@@ -122,13 +259,13 @@ export async function getDonationsData(options: GetDonationsOptions = {}) {
 
     const donorMap = new Map<string, { name: string, email: string, total: number }>();
 
-    (donorsData || []).forEach(d => {
+    (donorsData || []).forEach((d: { email?: string | null; name?: string | null; amount?: number }) => {
       const key = d.email;
       if (!key) return;
       if (!donorMap.has(key)) {
-        donorMap.set(key, { name: d.name || 'Anonyme', email: d.email, total: 0 });
+        donorMap.set(key, { name: d.name || 'Anonyme', email: d.email as string, total: 0 });
       }
-      donorMap.get(key)!.total += d.amount;
+      donorMap.get(key)!.total += d.amount ?? 0;
     });
 
     const topDonors = [...donorMap.values()].sort((a, b) => b.total - a.total).slice(0, 5);

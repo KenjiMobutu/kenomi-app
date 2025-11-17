@@ -1,0 +1,162 @@
+import { GET } from '@/app/api/admin/donations/route'
+import { NextRequest } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { getDonationsData } from '@/lib/actions'
+
+jest.mock('@/lib/actions')
+jest.mock('@clerk/nextjs/server')
+
+describe('API Route: /api/admin/donations', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  describe('GET /api/admin/donations', () => {
+    it('should return 403 if user is not admin', async () => {
+      // Mock auth to return non-admin user
+      ;(auth as jest.Mock).mockResolvedValue({
+        sessionClaims: {
+          metadata: { role: 'user' },
+        },
+      })
+
+      const request = new NextRequest('http://localhost:3000/api/admin/donations')
+      const response = await GET(request)
+
+      expect(response.status).toBe(403)
+      const json = await response.json()
+      expect(json.error).toContain('Accès refusé')
+    })
+
+    it('should return 403 if user is not authenticated', async () => {
+      // Mock auth to return no session
+      ;(auth as jest.Mock).mockResolvedValue({
+        sessionClaims: null,
+      })
+
+      const request = new NextRequest('http://localhost:3000/api/admin/donations')
+      const response = await GET(request)
+
+      expect(response.status).toBe(403)
+    })
+
+    it('should return donations data for admin user', async () => {
+      // Mock auth to return admin user
+      ;(auth as jest.Mock).mockResolvedValue({
+        sessionClaims: {
+          metadata: { role: 'admin' },
+        },
+      })
+
+      const mockData = {
+        paginatedData: [
+          {
+            id: '1',
+            amount: 100,
+            name: 'John Doe',
+            email: 'john@example.com',
+            status: 'paid',
+          },
+        ],
+        totalCount: 1,
+        stats: {
+          total: 100,
+          count: 1,
+          average: 100,
+        },
+        chartData: {
+          labels: ['Jan'],
+          amountData: [100],
+          countData: [1],
+        },
+        topDonors: [
+          {
+            name: 'John Doe',
+            email: 'john@example.com',
+            total: 100,
+          },
+        ],
+      }
+
+      ;(getDonationsData as jest.Mock).mockResolvedValue(mockData)
+
+      const request = new NextRequest('http://localhost:3000/api/admin/donations?page=1&pageSize=20')
+      const response = await GET(request)
+
+      expect(response.status).toBe(200)
+      const json = await response.json()
+      expect(json).toEqual(mockData)
+      expect(getDonationsData).toHaveBeenCalledWith({
+        page: 1,
+        pageSize: 20,
+        search: undefined,
+        startDate: undefined,
+        endDate: undefined,
+        status: 'all',
+        currency: 'all',
+        minAmount: undefined,
+        sortKey: 'created_at',
+        sortDirection: 'desc',
+      })
+    })
+
+    it('should parse query parameters correctly', async () => {
+      ;(auth as jest.Mock).mockResolvedValue({
+        sessionClaims: {
+          metadata: { role: 'admin' },
+        },
+      })
+
+      ;(getDonationsData as jest.Mock).mockResolvedValue({
+        paginatedData: [],
+        totalCount: 0,
+        stats: { total: 0, count: 0, average: 0 },
+        chartData: { labels: [], amountData: [], countData: [] },
+        topDonors: [],
+      })
+
+      const url = new URL('http://localhost:3000/api/admin/donations')
+      url.searchParams.set('page', '2')
+      url.searchParams.set('pageSize', '50')
+      url.searchParams.set('search', 'john')
+      url.searchParams.set('status', 'paid')
+      url.searchParams.set('currency', 'eur')
+      url.searchParams.set('minAmount', '100')
+      url.searchParams.set('sortKey', 'amount')
+      url.searchParams.set('sortDirection', 'asc')
+
+      const request = new NextRequest(url)
+      await GET(request)
+
+      expect(getDonationsData).toHaveBeenCalledWith({
+        page: 2,
+        pageSize: 50,
+        search: 'john',
+        startDate: undefined,
+        endDate: undefined,
+        status: 'paid',
+        currency: 'eur',
+        minAmount: 100,
+        sortKey: 'amount',
+        sortDirection: 'asc',
+      })
+    })
+
+    it('should handle database errors gracefully', async () => {
+      ;(auth as jest.Mock).mockResolvedValue({
+        sessionClaims: {
+          metadata: { role: 'admin' },
+        },
+      })
+
+      ;(getDonationsData as jest.Mock).mockRejectedValue(new Error('Database connection failed'))
+
+      const request = new NextRequest('http://localhost:3000/api/admin/donations')
+      const response = await GET(request)
+
+      expect(response.status).toBe(500)
+      const json = await response.json()
+      expect(json.error).toBe('Une erreur serveur interne est survenue.')
+    })
+  })
+})

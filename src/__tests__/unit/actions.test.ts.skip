@@ -1,0 +1,337 @@
+import {
+  getDonationStats,
+  getDonationChartData,
+  getTopDonors,
+  getPaginatedDonations,
+  addProject,
+  getProjects,
+  getProjectById,
+  deleteProject,
+  updateProject,
+} from '@/lib/actions'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+
+// Mock Supabase Admin client
+jest.mock('@/lib/supabaseAdmin', () => ({
+  supabaseAdmin: {
+    from: jest.fn(),
+  },
+}))
+
+describe('Donation Actions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  describe('getDonationStats', () => {
+    it('should calculate correct statistics', async () => {
+      const mockData = [
+        { amount: 100, email: 'user1@example.com' },
+        { amount: 200, email: 'user2@example.com' },
+        { amount: 150, email: 'user1@example.com' }, // Same user, different donation
+      ]
+
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.select.mockResolvedValue({ data: mockData, error: null })
+
+      const result = await getDonationStats()
+
+      expect(result.total).toBe(450)
+      expect(result.count).toBe(3)
+      expect(result.average).toBe(150)
+      expect(result.uniqueCount).toBe(2) // Only 2 unique emails
+    })
+
+    it('should handle empty donations', async () => {
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.select.mockResolvedValue({ data: [], error: null })
+
+      const result = await getDonationStats()
+
+      expect(result.total).toBe(0)
+      expect(result.count).toBe(0)
+      expect(result.average).toBe(0)
+      expect(result.uniqueCount).toBe(0)
+    })
+
+    it('should throw error on database failure', async () => {
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.select.mockResolvedValue({
+        data: null,
+        error: { message: 'Database error' },
+      })
+
+      await expect(getDonationStats()).rejects.toThrow()
+    })
+  })
+
+  describe('getDonationChartData', () => {
+    it('should group donations by month', async () => {
+      const mockData = [
+        { created_at: '2024-01-15T10:00:00Z', amount: 100 },
+        { created_at: '2024-01-20T10:00:00Z', amount: 200 },
+        { created_at: '2024-02-10T10:00:00Z', amount: 150 },
+      ]
+
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.select.mockResolvedValue({ data: mockData, error: null })
+
+      const result = await getDonationChartData()
+
+      expect(result.labels).toHaveLength(2) // Jan and Feb
+      expect(result.amountData).toEqual([300, 150]) // Jan: 300, Feb: 150
+      expect(result.countData).toEqual([2, 1]) // Jan: 2, Feb: 1
+    })
+  })
+
+  describe('getTopDonors', () => {
+    it('should return top 5 donors by total amount', async () => {
+      const mockData = [
+        { name: 'John Doe', email: 'john@example.com', amount: 100 },
+        { name: 'John Doe', email: 'john@example.com', amount: 200 },
+        { name: 'Jane Smith', email: 'jane@example.com', amount: 150 },
+        { name: 'Bob Wilson', email: 'bob@example.com', amount: 500 },
+      ]
+
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.select.mockResolvedValue({ data: mockData, error: null })
+
+      const result = await getTopDonors()
+
+      expect(result).toHaveLength(3)
+      expect(result[0].email).toBe('bob@example.com')
+      expect(result[0].total).toBe(500)
+      expect(result[1].email).toBe('john@example.com')
+      expect(result[1].total).toBe(300)
+    })
+
+    it('should handle donors without email', async () => {
+      const mockData = [
+        { name: 'John Doe', email: null, amount: 100 },
+        { name: 'Jane Smith', email: 'jane@example.com', amount: 150 },
+      ]
+
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.select.mockResolvedValue({ data: mockData, error: null })
+
+      const result = await getTopDonors()
+
+      expect(result).toHaveLength(1) // Only Jane should be included
+      expect(result[0].email).toBe('jane@example.com')
+    })
+  })
+
+  describe('getPaginatedDonations', () => {
+    it('should return paginated results', async () => {
+      const mockDonations = [
+        { id: '1', amount: 100, status: 'paid' },
+        { id: '2', amount: 200, status: 'paid' },
+      ]
+
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        range: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.select.mockResolvedValueOnce({ data: mockDonations, error: null })
+      mockQuery.select.mockResolvedValueOnce({ count: 10, error: null })
+
+      const result = await getPaginatedDonations({
+        page: 1,
+        pageSize: 2,
+      })
+
+      expect(result.donations).toHaveLength(2)
+      expect(result.totalCount).toBe(10)
+      expect(mockQuery.range).toHaveBeenCalledWith(0, 1)
+    })
+  })
+})
+
+describe('Project Actions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  describe('addProject', () => {
+    it('should add a new project', async () => {
+      const mockProject = { id: '1', title: 'Test Project', description: 'Test Description' }
+
+      const mockQuery = {
+        insert: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.insert.mockResolvedValue({ data: mockProject, error: null })
+
+      const result = await addProject('Test Project', 'Test Description')
+
+      expect(mockQuery.insert).toHaveBeenCalledWith([
+        { title: 'Test Project', description: 'Test Description' },
+      ])
+      expect(result).toEqual(mockProject)
+    })
+
+    it('should throw error on failure', async () => {
+      const mockQuery = {
+        insert: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.insert.mockResolvedValue({
+        data: null,
+        error: { message: 'Insert failed' },
+      })
+
+      await expect(addProject('Test', 'Description')).rejects.toThrow()
+    })
+  })
+
+  describe('getProjects', () => {
+    it('should return filtered and paginated projects', async () => {
+      const mockProjects = [
+        { id: '1', title: 'Project 1', created_at: '2024-01-01' },
+        { id: '2', title: 'Project 2', created_at: '2024-01-02' },
+      ]
+
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        ilike: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        range: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.order.mockResolvedValue({
+        data: mockProjects,
+        count: 2,
+        error: null,
+      })
+
+      const result = await getProjects({
+        search: 'Project',
+        page: 1,
+        pageSize: 10,
+      })
+
+      expect(result.data).toEqual(mockProjects)
+      expect(result.count).toBe(2)
+      expect(mockQuery.ilike).toHaveBeenCalledWith('title', '%Project%')
+    })
+  })
+
+  describe('getProjectById', () => {
+    it('should return a single project', async () => {
+      const mockProject = { id: '1', title: 'Test Project' }
+
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.single.mockResolvedValue({ data: mockProject, error: null })
+
+      const result = await getProjectById('1')
+
+      expect(result).toEqual(mockProject)
+      expect(mockQuery.eq).toHaveBeenCalledWith('id', '1')
+    })
+  })
+
+  describe('deleteProject', () => {
+    it('should delete a project', async () => {
+      const mockQuery = {
+        delete: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.eq.mockResolvedValue({ error: null })
+
+      await deleteProject('1')
+
+      expect(mockQuery.delete).toHaveBeenCalled()
+      expect(mockQuery.eq).toHaveBeenCalledWith('id', '1')
+    })
+  })
+
+  describe('updateProject', () => {
+    it('should update a project', async () => {
+      const updatedProject = { id: '1', title: 'Updated', description: 'New desc' }
+
+      const mockQuery = {
+        update: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+      }
+
+      ;(supabaseAdmin.from as jest.Mock).mockReturnValue(mockQuery)
+      mockQuery.eq.mockResolvedValue({ data: updatedProject, error: null })
+
+      const result = await updateProject('1', 'Updated', 'New desc')
+
+      expect(mockQuery.update).toHaveBeenCalledWith({
+        title: 'Updated',
+        description: 'New desc',
+      })
+      expect(result).toEqual(updatedProject)
+    })
+  })
+})

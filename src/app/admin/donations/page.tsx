@@ -574,6 +574,7 @@ export default function AdminDonationsPage() {
                 >
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <select
+                      title='selectedMonth'
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
                       className={`px-4 py-2 rounded-lg border ${
@@ -592,6 +593,7 @@ export default function AdminDonationsPage() {
                     </select>
 
                     <select
+                      title='filterStatus'
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
                       className={`px-4 py-2 rounded-lg border ${
@@ -605,6 +607,7 @@ export default function AdminDonationsPage() {
                     </select>
 
                     <select
+                      title='filterCurrency'
                       value={filterCurrency}
                       onChange={(e) => setFilterCurrency(e.target.value)}
                       className={`px-4 py-2 rounded-lg border ${

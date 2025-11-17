@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
 import { addProject } from '@/lib/actions';
 import { auth } from '@clerk/nextjs/server';
-// MODIFIÉ: Retrait de 'updateProject' qui est redondant ici
-// import { updateProject } from '@/lib/actions';
+
 
 
 export async function POST(req: Request) {
-  const { userId } = await auth(); // <-- CORRECTION: Ajout de 'await'
-
-  // VÉRIFICATION SÉCURITÉ: Seuls les utilisateurs connectés peuvent créer un projet.
-  if (!userId) {
+  const { sessionClaims } = await auth() as {
+    userId: string,
+    sessionClaims: { publicMetadata?: { role?: string } }
+  }; // Vérifie le token Clerk
+  const role = sessionClaims?.publicMetadata?.role;
+  // VÉRIFICATION SÉCURITÉ: Seuls les admins connectés peuvent créer un projet.
+  if (role !== 'admin') {
     return NextResponse.json({ error: 'Accès non autorisé' }, { status: 401 });
   }
   const { title, description } = await req.json();

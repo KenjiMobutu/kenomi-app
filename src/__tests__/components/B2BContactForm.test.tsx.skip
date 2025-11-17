@@ -1,0 +1,173 @@
+import React from 'react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { B2BContactForm } from '@/components/B2BContactForm'
+
+// Mock fetch
+global.fetch = jest.fn()
+
+describe('B2BContactForm', () => {
+  const mockTrainingOptions = [
+    { id: 'cybersecurity', title: 'Formation Cybersécurité' },
+    { id: 'phishing', title: 'Sensibilisation Phishing' },
+    { id: 'audit', title: 'Audit de Sécurité' }
+  ]
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('should render all form fields', () => {
+    render(<B2BContactForm trainingOptions={mockTrainingOptions} />)
+
+    expect(screen.getByLabelText(/entreprise/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/nom complet/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/email professionnel/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/téléphone/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/service intéressé/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/message/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /envoyer/i })).toBeInTheDocument()
+  })
+
+  it('should show validation errors for empty required fields', async () => {
+    render(<B2BContactForm trainingOptions={mockTrainingOptions} />)
+
+    const submitButton = screen.getByRole('button', { name: /envoyer/i })
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      // Check for HTML5 validation or custom error messages
+      const companyInput = screen.getByLabelText(/entreprise/i) as HTMLInputElement
+      expect(companyInput.validity.valid).toBe(false)
+    })
+  })
+
+  it('should validate email format', async () => {
+    render(<B2BContactForm trainingOptions={mockTrainingOptions} />)
+
+    const emailInput = screen.getByLabelText(/email professionnel/i) as HTMLInputElement
+
+    await userEvent.type(emailInput, 'invalid-email')
+    fireEvent.blur(emailInput)
+
+    expect(emailInput.validity.valid).toBe(false)
+  })
+
+  it('should submit form with valid data', async () => {
+    const mockFetch = global.fetch as jest.Mock
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true }),
+    })
+
+    render(<B2BContactForm trainingOptions={mockTrainingOptions} />)
+
+    // Fill out the form
+    await userEvent.type(screen.getByLabelText(/entreprise/i), 'Tech Corp')
+    await userEvent.type(screen.getByLabelText(/nom complet/i), 'John Doe')
+    await userEvent.type(screen.getByLabelText(/email professionnel/i), 'john@techcorp.com')
+    await userEvent.type(screen.getByLabelText(/téléphone/i), '+32 123 456 789')
+    await userEvent.selectOptions(screen.getByLabelText(/service intéressé/i), 'Formation Cybersécurité')
+    await userEvent.type(screen.getByLabelText(/message/i), 'Interested in your services')
+
+    const submitButton = screen.getByRole('button', { name: /envoyer/i })
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/contact/b2b',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: expect.stringContaining('Tech Corp'),
+        })
+      )
+    })
+  })
+
+  it('should display success message after successful submission', async () => {
+    const mockFetch = global.fetch as jest.Mock
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true }),
+    })
+
+    render(<B2BContactForm trainingOptions={mockTrainingOptions} />)
+
+    // Fill and submit form
+    await userEvent.type(screen.getByLabelText(/entreprise/i), 'Tech Corp')
+    await userEvent.type(screen.getByLabelText(/nom complet/i), 'John Doe')
+    await userEvent.type(screen.getByLabelText(/email professionnel/i), 'john@techcorp.com')
+
+    const submitButton = screen.getByRole('button', { name: /envoyer/i })
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(screen.getByText(/succès|merci|envoyé/i)).toBeInTheDocument()
+    })
+  })
+
+  it('should display error message on submission failure', async () => {
+    const mockFetch = global.fetch as jest.Mock
+    mockFetch.mockRejectedValueOnce(new Error('Network error'))
+
+    render(<B2BContactForm trainingOptions={mockTrainingOptions} />)
+
+    // Fill and submit form
+    await userEvent.type(screen.getByLabelText(/entreprise/i), 'Tech Corp')
+    await userEvent.type(screen.getByLabelText(/nom complet/i), 'John Doe')
+    await userEvent.type(screen.getByLabelText(/email professionnel/i), 'john@techcorp.com')
+
+    const submitButton = screen.getByRole('button', { name: /envoyer/i })
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(screen.getByText(/erreur|échec/i)).toBeInTheDocument()
+    })
+  })
+
+  it('should disable submit button while submitting', async () => {
+    const mockFetch = global.fetch as jest.Mock
+    mockFetch.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)))
+
+    render(<B2BContactForm trainingOptions={mockTrainingOptions} />)
+
+    // Fill form
+    await userEvent.type(screen.getByLabelText(/entreprise/i), 'Tech Corp')
+    await userEvent.type(screen.getByLabelText(/nom complet/i), 'John Doe')
+    await userEvent.type(screen.getByLabelText(/email professionnel/i), 'john@techcorp.com')
+
+    const submitButton = screen.getByRole('button', { name: /envoyer/i })
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(submitButton).toBeDisabled()
+    })
+  })
+
+  it('should clear form after successful submission', async () => {
+    const mockFetch = global.fetch as jest.Mock
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true }),
+    })
+
+    render(<B2BContactForm trainingOptions={mockTrainingOptions} />)
+
+    const companyInput = screen.getByLabelText(/entreprise/i) as HTMLInputElement
+
+    // Fill and submit
+    await userEvent.type(companyInput, 'Tech Corp')
+    await userEvent.type(screen.getByLabelText(/nom complet/i), 'John Doe')
+    await userEvent.type(screen.getByLabelText(/email professionnel/i), 'john@techcorp.com')
+
+    const submitButton = screen.getByRole('button', { name: /envoyer/i })
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(companyInput.value).toBe('')
+    })
+  })
+})
